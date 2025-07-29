@@ -1,19 +1,19 @@
 {
-  "name": "n8n-nodes-<...>",
+  "name": "n8n-nodes-homeassistantws",
   "version": "0.1.0",
-  "description": "",
+  "description": "Connect to Home Assistant through WebSockets",
   "keywords": [
     "n8n-community-node-package"
   ],
   "license": "MIT",
   "homepage": "",
   "author": {
-    "name": "",
-    "email": ""
+    "name": "Samuel Leisering",
+    "email": "samuel@sleisering.de"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/<...>/n8n-nodes-<...>.git"
+    "url": "https://github.com/Simiil/n8n_homeassistant_ws.git"
   },
   "engines": {
     "node": ">=20.15"
@@ -33,15 +33,15 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/ExampleCredentialsApi.credentials.js",
-      "dist/credentials/HttpBinApi.credentials.js"
+      "dist/credentials/HomeAssistantWsApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/ExampleNode/ExampleNode.node.js",
-      "dist/nodes/HttpBin/HttpBin.node.js"
+      "dist/nodes/HomeAssistantWS/HomeAssistantWS.node.js",
+      "dist/nodes/HomeAssistantWS/HomeAssistantWsTrigger.node.js"
     ]
   },
   "devDependencies": {
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/parser": "~8.32.0",
     "eslint": "^8.57.0",
     "eslint-plugin-n8n-nodes-base": "^1.16.3",
@@ -51,5 +51,8 @@
   },
   "peerDependencies": {
     "n8n-workflow": "*"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
   }
 }
