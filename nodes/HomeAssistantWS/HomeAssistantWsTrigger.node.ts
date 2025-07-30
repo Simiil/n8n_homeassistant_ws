@@ -1,5 +1,5 @@
 import { INodeType, INodeTypeDescription, ITriggerFunctions, ITriggerResponse, NodeConnectionType, NodeOperationError } from "n8n-workflow";
-import { HomeAssistant } from "./commands";
+import { HomeAssistant } from "./HomeAssistant";
 import { EventEmitter, WebSocket } from "ws";
 import { load_device_options, load_entity_options, load_trigger_options } from "./loadOptions";
 
@@ -53,6 +53,8 @@ export class HomeAssistantWsTrigger implements INodeType {
 					loadOptionsMethod: 'load_entity_options',
 				},
 			},
+
+
 			{
 				displayName: 'Device Name or ID',
 				name: 'deviceId',
@@ -125,20 +127,13 @@ export class HomeAssistantWsTrigger implements INodeType {
 					const [a, b] = assistant.subscribe_events('state_changed')
 					emitter = a;
 					ws = b;
-					emitter?.on('event', (event: any) => {
+					emitter?.on('event', async (event: any) => {
 
 						if (!entityId || event.entity_id == entityId) {
 							this.emit([
 								this.helpers.returnJsonArray([event])
 							]);
 						}
-					})
-					emitter?.on('error', (error: any) => {
-						stopConsumer();
-						this.emitError(new NodeOperationError(this.getNode(), error, {
-							message: error['message'] ?? 'Unknown error',
-							description: error['description'] ?? 'Unknown error'
-						}));
 					})
 
 					break;
@@ -154,17 +149,18 @@ export class HomeAssistantWsTrigger implements INodeType {
 								this.helpers.returnJsonArray([event])
 							]);
 						})
-						emitter?.on('error', (error: any) => {
-							stopConsumer();
-							this.emitError(new NodeOperationError(this.getNode(), error, {
-								message: error['message'] ?? 'Unknown error',
-								description: error['description'] ?? 'Unknown error'
-							}));
-						})
 					}
 					break;
 
 			}
+
+			emitter?.on('error', (error: any) => {
+				stopConsumer();
+				this.emitError(new NodeOperationError(this.getNode(), error, {
+					message: error['message'] ?? 'Unknown error',
+					description: error['description'] ?? 'Unknown error'
+				}));
+			})
 
 			ws?.on('error', (error) => {
 				stopConsumer();

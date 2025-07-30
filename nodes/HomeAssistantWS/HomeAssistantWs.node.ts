@@ -1,14 +1,21 @@
 
 
 import {
+	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { HomeAssistant } from './commands';
-import { load_area_options, load_component_options } from './loadOptions';
+import { HomeAssistant } from './HomeAssistant';
+import { load_area_options, load_component_options, load_entity_options, load_service_domain_options, load_service_options } from './loadOptions';
+import { areaFields, areaOperations, executeAreaOperation } from './operations/AreaOperations';
+import { categoryFields, categoryOperations, executeCategoryOperations } from './operations/CategoryOperations';
+import { deviceFields, deviceOperations, executeDeviceOperation } from './operations/DeviceOperations';
+import { entityFields, entityOperations, executeEntityOperation } from './operations/EntityOperations';
+import { executeStateOperation, stateFields, stateOperations } from './operations/StateOperations';
+import { executeServiceActionOperation, serviceActionFields, serviceActionOperations } from './operations/ServiceAction';
 
 
 
@@ -17,6 +24,7 @@ export class HomeAssistantWs implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Home Assistant WS',
 		name: 'homeAssistantWs',
+		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 		icon: 'file:homeAssistantWs.svg',
 		group: ['transform'],
 		version: 1,
@@ -57,129 +65,75 @@ export class HomeAssistantWs implements INodeType {
 							value: 'entity',
 						},
 						{
+							name: 'Service Action',
+							value: 'serviceAction',
+						},
+						{
 							name: 'State',
 							value: 'state',
 						},
-
-
 				],
 				default: 'area',
 				noDataExpression: true,
 				required: true,
 				description: 'The resource to interact with',
 			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				options: [
-					{
-						name: 'List',
-						value: 'list',
-						action: 'Return a list of items',
-					},
-				],
-				default: 'list',
-				displayOptions: {
-					show: {
-						resource: [
-							'area', 'category', 'device', 'entity',
-						],
-					},
-				},
-				noDataExpression: true,
-			},
 
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				options: [
-					{
-						name: 'List',
-						value: 'list',
-						action: 'Return a list of items',
-					},
-					{
-						name: 'Set',
-						value: 'set',
-						action: 'Set a state',
-					},
-				],
-				default: 'list',
-				displayOptions: {
-					show: {
-						resource: [
-							'state',
-						],
-					},
-				},
-				noDataExpression: true,
-			},
+			...areaOperations,
+			...areaFields,
 
-			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
-				type: 'collection',
-				placeholder: 'Add Field',
-				default: {},
-				displayOptions: {
-					show: {
-						resource: [
-							'device',
-						],
-					},
-				},
-				options: [
-					{
-						displayName: 'Area Name or ID',
-						name: 'areaId',
-						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-						default: '',
-						typeOptions: {
-							loadOptionsMethod: 'load_area_options',
-						},
-					},
-				],
-			},
-			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
-				type: 'collection',
-				placeholder: 'Add Field',
-				default: {},
-				displayOptions: {
-					show: {
-						resource: [
-							'entity',
-						],
-					},
-				},
-				options: [
-					{
-						displayName: 'Entity Type Name or ID',
-						name: 'entityType',
-						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-						default: '',
-						typeOptions: {
-							loadOptionsMethod: 'load_component_options',
-						},
-					},
+			...categoryOperations,
+			...categoryFields,
 
-					{
-						displayName: 'Area Name or ID',
-						name: 'areaId',
-						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-						default: '',
-						typeOptions: {
-							loadOptionsMethod: 'load_area_options',
-						},
-					},
-				],
-			},
+			...deviceOperations,
+			...deviceFields,
+
+			...entityOperations,
+			...entityFields,
+
+			...stateOperations,
+			...stateFields,
+
+			...serviceActionOperations,
+			...serviceActionFields,
+
+
+			// TODO: config
+			// event
+			// history
+			// log
+			// service
+			// template
+
+
+			// {
+			// 	displayName: 'Operation',
+			// 	name: 'operation',
+			// 	type: 'options',
+			// 	options: [
+			// 		{
+			// 			name: 'List',
+			// 			value: 'list',
+			// 			action: 'Return a list of items',
+			// 		},
+			// 		{
+			// 			name: 'Set',
+			// 			value: 'set',
+			// 			action: 'Set a state',
+			// 		},
+			// 	],
+			// 	default: 'list',
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'state',
+			// 			],
+			// 		},
+			// 	},
+			// 	noDataExpression: true,
+			// },
+
+
 		],
 
 	}
@@ -187,7 +141,10 @@ export class HomeAssistantWs implements INodeType {
 	methods = {
 		loadOptions: {
 			load_component_options,
-			load_area_options
+			load_area_options,
+			load_entity_options,
+			load_service_options,
+			load_service_domain_options,
 		}
 	}
 
@@ -199,40 +156,30 @@ export class HomeAssistantWs implements INodeType {
 		// const operation = this.getNodeParameter('operation', 0);
 
 			// open websocket with socket.io
-
+		const items = this.getInputData();
 		const cred = await this.getCredentials('homeAssistantWsApi');
 		const assistant = new HomeAssistant(cred.host, cred.apiKey)
 
 		let resultPromise: Promise<any[]> | undefined;
-		const additionalFields = this.getNodeParameter('additionalFields', 0, {});
 
 		switch (resource) {
 			case 'area':
-				resultPromise = assistant.get_areas();
+				resultPromise = executeAreaOperation(this, assistant, items);
 				break;
 			case 'entity':
-				const entityType = additionalFields.entityType
-				const areaId = additionalFields.areaId
-				resultPromise = assistant.get_entities(entityType as string, areaId as string);
+				resultPromise = executeEntityOperation(this, assistant, items);
 				break;
 			case 'device':
-				const deviceAreaId = additionalFields.areaId
-				resultPromise = assistant.get_devices(deviceAreaId as string);
+				resultPromise = executeDeviceOperation(this, assistant, items);
 				break;
 			case 'category':
-				resultPromise = assistant.get_categories();
+				resultPromise = executeCategoryOperations(this, assistant, items);
 				break;
 			case 'state':
-				// operation
-				const operation = this.getNodeParameter('operation', 0);
-				switch (operation) {
-					case 'list':
-						resultPromise = assistant.get_states();
-						break;
-					case 'set':
-						// resultPromise = assistant.set_state(stateEntityId as string, stateState as string);
-						break;
-				}
+				resultPromise = executeStateOperation(this, assistant, items);
+				break;
+			case 'serviceAction':
+				resultPromise = executeServiceActionOperation(this, assistant, items);
 				break;
 		}
 
@@ -241,6 +188,8 @@ export class HomeAssistantWs implements INodeType {
 		}
 
 
-		return resultPromise.then(items=> [this.helpers.returnJsonArray(items)]);
+		return resultPromise.then(items=>
+			[this.helpers.returnJsonArray(items as IDataObject[])]
+		);
 	}
 }

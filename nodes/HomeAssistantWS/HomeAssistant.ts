@@ -15,10 +15,11 @@ import {
 
 
 export class HomeAssistant {
+
 	constructor(private host: CredentialInformation, private apiKey: CredentialInformation) {
 	}
 
-	get_entities(entityType: string, areaId: string): Promise<Entity[]> {
+	get_entities(entityType?: string, areaId?: string): Promise<Entity[]> {
 		return this.get_array('config/entity_registry/list').then(items =>
 			items
 				.map(item => Entity.fromJSON(item))
@@ -31,11 +32,54 @@ export class HomeAssistant {
 		);
 	}
 
+	async get_service_domains(): Promise<any[]> {
+
+		 const services = await this.get_single("get_services")
+
+		 const options: string[] = [];
+		 for(let k in services) {
+
+			 options.push(k)
+
+		 }
+
+		 return options
+	}
+
+	async get_service_actions(domain?: string): Promise<any[]> {
+		const services = await this.get_single("get_services")
+
+		const options: any[] = [];
+		for(let k in services) {
+			if(!domain || k == domain) {
+
+				for (let s in services[k]) {
+					const serviceDef = services[k][s]
+					serviceDef['id'] = s
+					serviceDef['domain'] = k
+					options.push(serviceDef)
+				}
+			}
+		}
+		console.log("service actions", options);
+
+		return options
+	}
+
 	get_all_entities(): Promise<Entity[]> {
 		return this.get_array('config/entity_registry/list').then(items =>
 			items
 				.map(item => Entity.fromJSON(item))
 		);
+	}
+
+	call_service(domain: string, service: string, attributes: any, response: boolean): Promise<any> {
+		return this.call('call_service', {
+			domain: domain,
+			service: service,
+			service_data: attributes,
+			return_response: response
+		})
 	}
 
 
@@ -51,20 +95,27 @@ export class HomeAssistant {
 		return this.get_object('get_config').then(item => Config.fromJSON(item));
 	}
 
-	get_devices(areaId: string): Promise<Device[]> {
+
+	get_device(deviceId: string): Promise<Device | undefined> {
 		return this.get_array('config/device_registry/list')
-		.then(items => items.map(item => Device.fromJSON(item)))
-		.then(items => items.filter(item => !areaId || areaId.trim() === '' || item.area_id === areaId));
+			.then(items => items.map(item => Device.fromJSON(item)))
+			.then(items => items.find(item => item.id === deviceId));
+	}
+
+	get_devices_by_area(areaId: string): Promise<Device[]> {
+		return this.get_array('config/device_registry/list')
+			.then(items => items.map(item => Device.fromJSON(item)))
+			.then(items => items.filter(item => !areaId || areaId.trim() === '' || item.area_id === areaId));
 	}
 
 
 	get_all_devices(): Promise<Device[]> {
 		return this.get_array('config/device_registry/list')
-		.then(items => items.map(item => Device.fromJSON(item)))
+			.then(items => items.map(item => Device.fromJSON(item)))
 	}
 
-	get_categories(): Promise<any[]> {
-		return this.get_array('config/category_registry/list');
+	get_categories(scope: string): Promise<any[]> {
+		return this.get_array('config/category_registry/list', { scope: scope });
 	}
 
 	get_areas(): Promise<Area[]> {
@@ -95,13 +146,13 @@ export class HomeAssistant {
 		const emitter = new EventEmitter();
 
 		ws.on('message', (event: MessageEvent) => {
-			try{
+			try {
 				const data = JSON.parse(event.toString());
 
-				if(data['success'] == false) {
+				if (data['success'] == false) {
 					ws.close();
 					emitter.emit('error', data['error']);
-				}else{
+				} else {
 
 					if (data['type'] == 'auth_ok') {
 						ws.send(JSON.stringify({
@@ -111,10 +162,10 @@ export class HomeAssistant {
 						}));
 					}
 
-					if(data['id'] == 2) {
+					if (data['id'] == 2) {
 						// we have the trigger list, find the trigger
 						const triggerArray = data['result'].filter((t: Trigger) => trigger.includes(t.subtype));
-						if(triggerArray) {
+						if (triggerArray) {
 							const jsonString = JSON.stringify({
 								type: 'subscribe_trigger',
 								id: 3,
@@ -124,7 +175,7 @@ export class HomeAssistant {
 						}
 					}
 
-					if(data['id'] == 3 && data['type'] == 'event') {
+					if (data['id'] == 3 && data['type'] == 'event') {
 						emitter.emit('event', data['event']);
 					}
 				}
@@ -145,10 +196,10 @@ export class HomeAssistant {
 			try {
 				const data = JSON.parse(event.toString());
 
-				if(data['success'] == false) {
+				if (data['success'] == false) {
 					ws.close();
 					emitter.emit('error', data['error']);
-				}else{
+				} else {
 					if (data['type'] == 'auth_ok') {
 
 						ws.send(JSON.stringify({
@@ -158,7 +209,7 @@ export class HomeAssistant {
 						}));
 					}
 
-					if(data['type'] == 'event') {
+					if (data['type'] == 'event') {
 						emitter.emit('event', EventData.fromJSON(data['event']['data']));
 					}
 				}
@@ -191,14 +242,15 @@ export class HomeAssistant {
 				}));
 			}
 
-			if(data['type'] == 'auth_ok') {
+			if (data['type'] == 'auth_ok') {
 				Logger.info('WebSocket connection authenticated');
 			}
 		});
 		return ws;
 
 	}
-	get(type: string, params?: any): Promise<any[]> {
+
+	private do_get(type: string, params?: any, response: boolean = true): Promise<any> {
 		///config/area_registry/list
 		const resultPromise: Promise<any> = new Promise((resolve, reject) => {
 
@@ -211,17 +263,26 @@ export class HomeAssistant {
 				try {
 					const data = JSON.parse(event.toString());
 
-					if(data['success'] == false) {
+					if (data['success'] == false) {
 						ws.close();
 						reject(new Error(data['error']['message']));
-					}else{
+					} else {
 						if (data['type'] == 'auth_ok') {
 							const jsonString = JSON.stringify({
 								type: type,
 								id: request_id,
 								...params
 							})
+							console.log(jsonString);
 							ws.send(jsonString);
+
+							if(!response) {
+								resolve(
+									[]
+								);
+
+								ws.close();
+							}
 						}
 
 
@@ -253,6 +314,18 @@ export class HomeAssistant {
 		});
 
 		return resultPromise;
+	}
+
+	private call(type: string, params?: any, response: boolean = true): Promise<any> {
+		return this.do_get(type, params, response)
+	}
+
+	get_single(type: string, params?: any): Promise<any> {
+		return this.do_get(type, params)
+	}
+
+	get(type: string, params?: any): Promise<any[]> {
+		return this.do_get(type, params).then(item => item as any[]);
 	}
 
 }
