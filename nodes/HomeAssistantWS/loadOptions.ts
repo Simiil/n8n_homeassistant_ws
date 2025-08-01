@@ -7,11 +7,10 @@ export async function load_component_options(
 ): Promise<INodePropertyOptions[]> {
 
 	const cred = await this.getCredentials('homeAssistantWsApi');
-	const assistant = new HomeAssistant(cred.host, cred.apiKey)
-	const components = await assistant.get_components()
-	return components.map(component => ({ name: component, value: component }))
-
-	// return Promise.resolve([{ name: 'Test', value: 'test' }]);
+	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
+		const components = await assistant.get_components()
+		return components.map(component => ({ name: component, value: component }))
+	})
 }
 
 export async function load_service_options(
@@ -19,11 +18,12 @@ export async function load_service_options(
 ): Promise<INodePropertyOptions[]> {
 
 	const cred = await this.getCredentials('homeAssistantWsApi');
-	const assistant = new HomeAssistant(cred.host, cred.apiKey)
-	const domain = this.getNodeParameter('serviceDomain', "") as string
-	const services = await assistant.get_service_actions(domain)
+	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
+		const domain = this.getNodeParameter('serviceDomain', "") as string
+		const services = await assistant.get_service_actions(domain)
 
-	return services.map(service => ({ name: service.name, value: service.id, description: service.description }))
+		return services.map(service => ({ name: service.name, value: service.id, description: service.description }))
+	})
 }
 
 
@@ -32,36 +32,37 @@ export async function load_service_domain_options(
 ): Promise<INodePropertyOptions[]> {
 
 	const cred = await this.getCredentials('homeAssistantWsApi');
-	const assistant = new HomeAssistant(cred.host, cred.apiKey)
-	const services = await assistant.get_service_domains()
+	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
+		const services = await assistant.get_service_domains()
 
-	return services.map(service => ({ name: service, value: service }))
+		return services.map(service => ({ name: service, value: service }))
+	})
 }
 
 export async function load_entity_options(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-
 	const cred = await this.getCredentials('homeAssistantWsApi');
-	const assistant = new HomeAssistant(cred.host, cred.apiKey)
-	const components = await assistant.get_all_entities()
-	const devices = await assistant.get_all_devices()
+	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
+		const components = await assistant.get_all_entities()
+		const devices = await assistant.get_all_devices()
 
-	return components.map(entity => {
-		const device = devices.find(d => d.id == entity.device_id)
-		// const description = [device?.name, entity.entity_id].filter(Boolean).join(': ')
+		return components.map(entity => {
+			const device = devices.find(d => d.id == entity.device_id)
+			// const description = [device?.name, entity.entity_id].filter(Boolean).join(': ')
 
-		const entityName = entity.name ?? entity.original_name;
-		const deviceName = device?.name_by_user ?? device?.name;
+			const entityName = entity.name ?? entity.original_name;
+			const deviceName = device?.name_by_user ?? device?.name;
 
-		if (entityName) {
-			// we have an entity name, use the device name as description
-			const description = [device?.name, entity.entity_id].filter(Boolean).join(': ')
-			return ({ name: entityName??'', value: entity.entity_id, description: description })
-		} else {
-			const description = [entity.entity_id].filter(Boolean).join(': ')
-			return ({ name: deviceName??'', value: entity.entity_id, description: description })
-		}
+			if (entityName) {
+				// we have an entity name, use the device name as description
+				const description = [device?.name, entity.entity_id].filter(Boolean).join(': ')
+				return ({ name: entityName ?? '', value: entity.entity_id, description: description })
+			} else {
+				const description = [entity.entity_id].filter(Boolean).join(': ')
+				return ({ name: deviceName ?? '', value: entity.entity_id, description: description })
+			}
+		})
 	})
 }
 
@@ -71,13 +72,15 @@ export async function load_device_options(
 ): Promise<INodePropertyOptions[]> {
 
 	const cred = await this.getCredentials('homeAssistantWsApi');
-	const assistant = new HomeAssistant(cred.host, cred.apiKey)
-	const components = await assistant.get_all_devices()
+	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
+		const components = await assistant.get_all_devices()
 
-	return components.map(component => {
-		return ({ name: component.name ?? '', value: component.id, description: component.model ?? '' })
+		return components.map(component => {
+			return ({ name: component.name ?? '', value: component.id, description: component.model ?? '' })
+		})
 	})
 }
+
 
 export async function load_trigger_options(
 	this: ILoadOptionsFunctions,
@@ -88,11 +91,16 @@ export async function load_trigger_options(
 	}
 
 	const cred = await this.getCredentials('homeAssistantWsApi');
-	const assistant = new HomeAssistant(cred.host, cred.apiKey)
-	const triggers = await assistant.get_triggers_for_device(deviceId as string)
+	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
+		const triggers = await assistant.get_triggers_for_device(deviceId as string)
+		console.log('triggers', triggers);
+		return triggers.map(trigger => {
 
-	return triggers.map(trigger => {
-		return ({ name: trigger.subtype ?? '', value: trigger.subtype, description: trigger.type ?? '' })
+			return ({ name: trigger.getName(), value: trigger.getId(), description: trigger.domain ?? '' })
+		})
+	}).then(options => {
+		console.log('options', options);
+		return options;
 	})
 }
 
@@ -101,7 +109,8 @@ export async function load_area_options(
 ): Promise<INodePropertyOptions[]> {
 
 	const cred = await this.getCredentials('homeAssistantWsApi');
-	const assistant = new HomeAssistant(cred.host, cred.apiKey)
-	const components = await assistant.get_areas()
-	return components.map(area => ({ name: area.name, value: area.area_id }))
+	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
+		const components = await assistant.get_areas()
+		return components.map(area => ({ name: area.name, value: area.area_id }))
+	})
 }

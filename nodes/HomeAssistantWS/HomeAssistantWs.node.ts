@@ -1,7 +1,6 @@
 
 
 import {
-	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -48,30 +47,30 @@ export class HomeAssistantWs implements INodeType {
 				name: 'resource',
 				type: 'options',
 				options: [
-						{
-							name: 'Area',
-							value: 'area',
-						},
-						{
-							name: 'Category',
-							value: 'category',
-						},
-						{
-							name: 'Device',
-							value: 'device',
-						},
-						{
-							name: 'Entity',
-							value: 'entity',
-						},
-						{
-							name: 'Service Action',
-							value: 'serviceAction',
-						},
-						{
-							name: 'State',
-							value: 'state',
-						},
+					{
+						name: 'Area',
+						value: 'area',
+					},
+					{
+						name: 'Category',
+						value: 'category',
+					},
+					{
+						name: 'Device',
+						value: 'device',
+					},
+					{
+						name: 'Entity',
+						value: 'entity',
+					},
+					{
+						name: 'Service Action',
+						value: 'serviceAction',
+					},
+					{
+						name: 'State',
+						value: 'state',
+					},
 				],
 				default: 'area',
 				noDataExpression: true,
@@ -151,45 +150,48 @@ export class HomeAssistantWs implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		// const items = this.getInputData();
-		const resource = this.getNodeParameter('resource', 0);
 
 		// const operation = this.getNodeParameter('operation', 0);
 
-			// open websocket with socket.io
+		// open websocket with socket.io
 		const items = this.getInputData();
+
 		const cred = await this.getCredentials('homeAssistantWsApi');
 		const assistant = new HomeAssistant(cred.host, cred.apiKey)
 
-		let resultPromise: Promise<any[]> | undefined;
+		let resultData: INodeExecutionData[][] = [];
+
+		const resource = this.getNodeParameter('resource', 0); // all resources are the same
+
 
 		switch (resource) {
 			case 'area':
-				resultPromise = executeAreaOperation(this, assistant, items);
+				resultData = await executeAreaOperation(this, assistant, items);
 				break;
 			case 'entity':
-				resultPromise = executeEntityOperation(this, assistant, items);
+				resultData = await executeEntityOperation(this, assistant, items);
 				break;
 			case 'device':
-				resultPromise = executeDeviceOperation(this, assistant, items);
+				resultData = await executeDeviceOperation(this, assistant, items);
 				break;
 			case 'category':
-				resultPromise = executeCategoryOperations(this, assistant, items);
+				resultData = await executeCategoryOperations(this, assistant, items);
 				break;
 			case 'state':
-				resultPromise = executeStateOperation(this, assistant, items);
+				resultData = await executeStateOperation(this, assistant, items);
 				break;
 			case 'serviceAction':
-				resultPromise = executeServiceActionOperation(this, assistant, items);
+				resultData = await executeServiceActionOperation(this, assistant, items);
 				break;
 		}
 
-		if(!resultPromise) {
-			throw Promise.reject(new Error('Invalid resource'));
-		}
 
 
-		return resultPromise.then(items=>
-			[this.helpers.returnJsonArray(items as IDataObject[])]
-		);
+		assistant.close();
+		return resultData;
+
+		// return resultPromise.then(items=>
+		// 	[this.helpers.returnJsonArray(items as IDataObject[])]
+		// );
 	}
 }

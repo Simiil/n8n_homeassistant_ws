@@ -1,6 +1,6 @@
-import { IDataObject, IExecuteFunctions, INodeProperties } from "n8n-workflow";
+import { IDataObject, IExecuteFunctions, INodeExecutionData, INodeProperties } from "n8n-workflow";
 import { HomeAssistant } from "../HomeAssistant";
-import { Area } from "../model/Area";
+import { mapResults } from "../utils";
 
 export const areaOperations: INodeProperties[] = [
 	{
@@ -28,6 +28,25 @@ export const areaOperations: INodeProperties[] = [
 ]
 export const areaFields: INodeProperties[] = []
 
-export function executeAreaOperation(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<Area[]> {
-	return assistant.get_areas();
+export async function executeAreaOperation(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<INodeExecutionData[][]> {
+	const results: IDataObject[][] = [];
+	const operation = t.getNodeParameter('operation', 0); // all operations are the same
+
+
+	console.log('operation', operation);
+
+	switch (operation) {
+		case 'list': {
+			const areas = await assistant.get_areas() as any[];
+			for (let i = 0; i < items.length; i++) {
+				results.push(areas); // no need to get areas for each item, its all the same
+			}
+			break
+		}
+		default:
+			throw new Error('Invalid operation');
+	}
+
+
+	return mapResults(t, items, results);
 }

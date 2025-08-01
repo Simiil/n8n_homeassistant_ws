@@ -1,5 +1,6 @@
 import { IDataObject, IExecuteFunctions, INodeProperties } from "n8n-workflow";
 import { HomeAssistant } from "../HomeAssistant";
+import { mapResults } from "../utils";
 
 
 
@@ -191,30 +192,48 @@ export const serviceActionFields: INodeProperties[] = [
 	// },
 ]
 
-export function executeServiceActionOperation(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<any[]> {
-	const operation = t.getNodeParameter("operation", 0) as string
-	const additionalFields = t.getNodeParameter('additionalFields', 0, {});
+export async function executeServiceActionOperation(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<any[]> {
+	const operation = t.getNodeParameter("operation", 0) as string // all operations are the same
+
+	const results: IDataObject[][] = [];
 
 	switch (operation) {
-		case 'list':
-			return assistant.get_service_actions()
-		case 'execute':
-			const serviceDomain = t.getNodeParameter("serviceDomain", 0) as string
-			const serviceName = t.getNodeParameter("serviceName", 0) as string
-			const serviceAttributes = t.getNodeParameter("serviceAttributes", 0, {}) as {
-				attributes: IDataObject[]
+		case 'list': {
+			const data = await assistant.get_service_actions()
+
+			for (let i = 0; i < items.length; i++) {
+				results.push(data);
 			}
-
-			const serviceData: IDataObject = {}
-			serviceAttributes.attributes.map(attribute => {
-				serviceData[attribute.name as string] = attribute.value
-			})
-
-			const response = additionalFields.response as boolean
-
-			return assistant.call_service(serviceDomain, serviceName, serviceData, response)
-
+			break;
+		}
+		case 'execute': {
+			for (let i = 0; i < items.length; i++) {
+				const data = await executeServerAction(t, assistant, i);
+				results.push([data]);
+			}
+			break;
+		}
 		default:
 			throw new Error(`Unknown operation: ${operation}`);
 	}
+
+	return mapResults(t, items, results);
 }
+async function executeServerAction(t: IExecuteFunctions, assistant: HomeAssistant, item: number): Promise<any> {
+	const additionalFields = t.getNodeParameter('additionalFields', item, {});
+	const serviceDomain = t.getNodeParameter("serviceDomain", item) as string;
+	const serviceName = t.getNodeParameter("serviceName", item) as string;
+	const serviceAttributes = t.getNodeParameter("serviceAttributes", item, {}) as {
+		attributes: IDataObject[];
+	};
+
+	const serviceData: IDataObject = {};
+	serviceAttributes.attributes.map(attribute => {
+		serviceData[attribute.name as string] = attribute.value;
+	});
+
+	const response = additionalFields.response as boolean;
+
+	return await assistant.call_service(serviceDomain, serviceName, serviceData, response);
+}
+

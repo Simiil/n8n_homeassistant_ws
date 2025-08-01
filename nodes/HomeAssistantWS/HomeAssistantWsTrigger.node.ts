@@ -1,6 +1,6 @@
-import { INodeType, INodeTypeDescription, ITriggerFunctions, ITriggerResponse, NodeConnectionType, NodeOperationError } from "n8n-workflow";
+import { INodeType, INodeTypeDescription, ITriggerFunctions, ITriggerResponse, NodeApiError, NodeConnectionType, NodeOperationError } from "n8n-workflow";
 import { HomeAssistant } from "./HomeAssistant";
-import { EventEmitter, WebSocket } from "ws";
+import { EventEmitter } from "ws";
 import { load_device_options, load_entity_options, load_trigger_options } from "./loadOptions";
 
 export class HomeAssistantWsTrigger implements INodeType {
@@ -113,9 +113,11 @@ export class HomeAssistantWsTrigger implements INodeType {
 
 		let assistant: HomeAssistant | undefined;
 		let emitter: EventEmitter | undefined;
-		let ws: WebSocket | undefined;
+		let running = false;
 
 		const startConsumer = async () => {
+			running = true;
+			console.log('starting consumer...');
 			const cred = await this.getCredentials('homeAssistantWsApi');
 			assistant = new HomeAssistant(cred.host, cred.apiKey)
 
@@ -124,16 +126,19 @@ export class HomeAssistantWsTrigger implements INodeType {
 			switch (resource) {
 				case 'state': {
 					const entityId = this.getNodeParameter('entityId', null, {});
-					const [a, b] = assistant.subscribe_events('state_changed')
-					emitter = a;
-					ws = b;
+					const emitter = assistant.subscribe_events('state_changed')
 					emitter?.on('event', async (event: any) => {
-
-						if (!entityId || event.entity_id == entityId) {
+						const data = event.data;
+						console.log('got event', data);
+						if (!entityId || data.entity_id == entityId) {
 							this.emit([
 								this.helpers.returnJsonArray([event])
 							]);
 						}
+					})
+
+					emitter?.on('error', (error: any) => {
+						this.emitError(new NodeApiError(this.getNode(), error));
 					})
 
 					break;
@@ -141,13 +146,14 @@ export class HomeAssistantWsTrigger implements INodeType {
 				case 'trigger': {
 						const triggerId = this.getNodeParameter('triggerId', null, {});
 						const deviceId = this.getNodeParameter('deviceId', null, {});
-						const [a, b] = assistant.subscribe_trigger(deviceId as string, triggerId as string[])
-						emitter = a;
-						ws = b;
+						const emitter = await assistant.subscribe_trigger(deviceId as string, triggerId as string[])
 						emitter?.on('event', (event: any) => {
 							this.emit([
 								this.helpers.returnJsonArray([event])
 							]);
+						})
+						emitter?.on('error', (error: any) => {
+							this.emitError(new NodeApiError(this.getNode(), error));
 						})
 					}
 					break;
@@ -162,12 +168,12 @@ export class HomeAssistantWsTrigger implements INodeType {
 				}));
 			})
 
-			ws?.on('error', (error) => {
+			assistant.on('error', (error: any) => {
 				stopConsumer();
 				this.emitError(new NodeOperationError(this.getNode(), error));
 			})
 
-			ws?.on('close', () => {
+			assistant.on('close', () => {
 				stopConsumer();
 				this.emitError(new NodeOperationError(this.getNode(), 'Connection closed unexpectedly'));
 			})
@@ -176,14 +182,19 @@ export class HomeAssistantWsTrigger implements INodeType {
 		}
 
 		async function stopConsumer() {
+			console.log('stopping consumer...');
 			// remove all listeners so we dont trigger the unexpected closed error
-			ws?.removeAllListeners();
-			ws?.close();
+			await assistant?.removeAllListeners();
+			await assistant?.close();
 			emitter?.removeAllListeners();
+			running = false;
 		}
 
 		async function manualTriggerFunction() {
-			await startConsumer();
+			if(!running){
+				console.log('manualTriggerFunction');
+				await startConsumer();
+			}
 		}
 
 		await startConsumer();

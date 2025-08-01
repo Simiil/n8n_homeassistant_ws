@@ -1,5 +1,6 @@
 import { IDataObject, IExecuteFunctions, INodeProperties } from "n8n-workflow"
 import { HomeAssistant } from "../HomeAssistant";
+import { mapResults } from "../utils";
 
 export const deviceOperations: INodeProperties[] = [
 	{
@@ -58,17 +59,25 @@ export const deviceFields: INodeProperties[] = [
 ]
 
 
-export function executeDeviceOperation(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<any[]> {
+export async function executeDeviceOperation(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<any[]> {
 
 	const operation = t.getNodeParameter("operation", 0) as string
-	const additionalFields = t.getNodeParameter('additionalFields', 0, {});
+
+	const results: IDataObject[][] = [];
 
 
 	switch (operation) {
 		case 'list':
-			const areaId = additionalFields.areaId as string ?? ''
-			return assistant.get_devices_by_area(areaId);
+			for (let i = 0; i < items.length; i++) {
+				const additionalFields = t.getNodeParameter('additionalFields', i, {});
+				const areaId = additionalFields.areaId as string ?? ''
+				const data = await assistant.get_devices_by_area(areaId);
+				results.push(data as any[]);
+			}
+			break;
 		default:
 			throw new Error(`Unknown operation: ${operation}`);
 	}
+
+	return mapResults(t, items, results);
 }

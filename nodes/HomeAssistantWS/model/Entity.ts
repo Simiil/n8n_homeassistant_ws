@@ -1,3 +1,4 @@
+import { Device } from "./Device";
 
 
 export class Entity {
@@ -24,6 +25,8 @@ export class Entity {
 	platform: string;
 	translation_key: string | null;
 	unique_id: string;
+
+	device?: Device;
 
 	constructor(data?: Partial<Entity>) {
 		this.area_id = data?.area_id ?? null;

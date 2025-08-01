@@ -1,5 +1,6 @@
 import { IDataObject, IExecuteFunctions, INodeProperties } from "n8n-workflow"
 import { HomeAssistant } from "../HomeAssistant";
+import { mapResults } from "../utils";
 
 export const entityOperations: INodeProperties[] = [
 	{
@@ -66,12 +67,36 @@ export const entityFields: INodeProperties[] = [
 ]
 
 
-export function executeEntityOperation(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<any[]> {
-	const additionalFields = t.getNodeParameter('additionalFields', 0, {});
-	// const operation = t.getNodeParameter("operation", 0) as string
+export async function executeEntityOperation(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<any[]> {
 
-	const entityType = additionalFields.entityType
-	const areaId = additionalFields.areaId
-	// resultPromise = assistant.get_entities(entityType as string, areaId as string);
-	return assistant.get_entities(entityType as string, areaId as string);
+
+	// const additionalFields = t.getNodeParameter('additionalFields', 0, {});
+	// // const operation = t.getNodeParameter("operation", 0) as string
+
+	// const entityType = additionalFields.entityType
+	// const areaId = additionalFields.areaId
+	// // resultPromise = assistant.get_entities(entityType as string, areaId as string);
+	// return assistant.get_entities(entityType as string, areaId as string);
+
+
+	const operation = t.getNodeParameter("operation", 0) as string
+
+	const results: IDataObject[][] = [];
+
+
+	switch (operation) {
+		case 'list':
+			for (let i = 0; i < items.length; i++) {
+				const additionalFields = t.getNodeParameter('additionalFields', i, {});
+				const areaId = additionalFields.areaId as string ?? ''
+				const entityType = additionalFields.entityType as string ?? ''
+				const data = await assistant.get_entities(entityType, areaId);
+				results.push(data as any[]);
+			}
+			break;
+		default:
+			throw new Error(`Unknown operation: ${operation}`);
+	}
+
+	return mapResults(t, items, results);
 }
