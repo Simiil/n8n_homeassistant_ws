@@ -350,6 +350,10 @@ export class HomeAssistant {
 		return promise
 	}
 
+  send_no_response(type: string, params?: any): Promise<void> {
+    return this.send(this.cmd.get(), type, params)
+  }
+
 	private send(id: number, type: string, params?: any): Promise<void> {
 
 		const jsonString = JSON.stringify({

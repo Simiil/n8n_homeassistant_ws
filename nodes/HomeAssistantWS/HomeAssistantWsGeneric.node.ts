@@ -61,7 +61,7 @@ export class HomeAssistantWsGeneric implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'Type is required')
 			}
 
-
+			const hasResponse = this.getNodeParameter('response', i, true)
 			const hasParameters = this.getNodeParameter('hasParameters', i, false)
 			const bodyParameters = this.getNodeParameter(
 				'bodyParameters.parameters',
@@ -79,12 +79,17 @@ export class HomeAssistantWsGeneric implements INodeType {
 				itemIndex: i
 			});
 
-			const result = await assistant.send_with_response<any>(
-				type as string,
-				d => Promise.resolve(d),
-				queryParams
-			)
-			results.push(this.helpers.returnJsonArray(result))
+			if(hasResponse){
+				const result = await assistant.send_with_response<any>(
+					type as string,
+					d => Promise.resolve(d),
+					queryParams
+				)
+				results.push(this.helpers.returnJsonArray(result))
+			}else{
+				await assistant.send_no_response(type as string, queryParams)
+				results.push(this.helpers.returnJsonArray([]))
+			}
 
 		}
 
