@@ -11,14 +11,14 @@ export const areaOperations: INodeProperties[] = [
 			{
 				name: 'List',
 				value: 'list',
-				action: 'Return a list of items',
+				action: 'Return a list of areas',
 			},
 		],
 		default: 'list',
 		displayOptions: {
 			show: {
 				resource: [
-					'area' //, 'category', 'device', 'entity',
+					'area'
 				],
 			},
 		},

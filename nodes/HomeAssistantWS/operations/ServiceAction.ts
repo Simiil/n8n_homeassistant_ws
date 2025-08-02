@@ -1,4 +1,4 @@
-import { IDataObject, IExecuteFunctions, INodeProperties } from "n8n-workflow";
+import { IDataObject, IExecuteFunctions, INodeExecutionData, INodeProperties } from "n8n-workflow";
 import { HomeAssistant } from "../HomeAssistant";
 import { mapResults } from "../utils";
 
@@ -13,7 +13,7 @@ export const serviceActionOperations: INodeProperties[] = [
 			{
 				name: 'List',
 				value: 'list',
-				action: 'Return a list of items',
+				action: 'Return a list of service actions',
 			},
 			{
 				name: 'Execute',
@@ -192,7 +192,7 @@ export const serviceActionFields: INodeProperties[] = [
 	// },
 ]
 
-export async function executeServiceActionOperation(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<any[]> {
+export async function executeServiceActionOperation(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<INodeExecutionData[][]> {
 	const operation = t.getNodeParameter("operation", 0) as string // all operations are the same
 
 	const results: IDataObject[][] = [];
@@ -228,7 +228,7 @@ async function executeServerAction(t: IExecuteFunctions, assistant: HomeAssistan
 	};
 
 	const serviceData: IDataObject = {};
-	serviceAttributes.attributes.map(attribute => {
+	serviceAttributes.attributes?.map(attribute => {
 		serviceData[attribute.name as string] = attribute.value;
 	});
 

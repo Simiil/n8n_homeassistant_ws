@@ -1,4 +1,4 @@
-import { IDataObject, IExecuteFunctions, INodeProperties } from "n8n-workflow"
+import { IDataObject, IExecuteFunctions, INodeExecutionData, INodeProperties } from "n8n-workflow"
 import { HomeAssistant } from "../HomeAssistant";
 import { mapResults } from "../utils";
 
@@ -11,7 +11,7 @@ export const entityOperations: INodeProperties[] = [
 			{
 				name: 'List',
 				value: 'list',
-				action: 'Return a list of items',
+				action: 'Return a list of entities',
 			},
 		],
 		default: 'list',
@@ -67,17 +67,7 @@ export const entityFields: INodeProperties[] = [
 ]
 
 
-export async function executeEntityOperation(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<any[]> {
-
-
-	// const additionalFields = t.getNodeParameter('additionalFields', 0, {});
-	// // const operation = t.getNodeParameter("operation", 0) as string
-
-	// const entityType = additionalFields.entityType
-	// const areaId = additionalFields.areaId
-	// // resultPromise = assistant.get_entities(entityType as string, areaId as string);
-	// return assistant.get_entities(entityType as string, areaId as string);
-
+export async function executeEntityOperation(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<INodeExecutionData[][]> {
 
 	const operation = t.getNodeParameter("operation", 0) as string
 

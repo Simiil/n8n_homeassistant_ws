@@ -1,6 +1,7 @@
-import { IDataObject, IExecuteFunctions, INodeProperties } from "n8n-workflow";
+import { IDataObject, IExecuteFunctions, INodeExecutionData, INodeProperties } from "n8n-workflow";
 import { HomeAssistant } from "../HomeAssistant";
 import { State } from "../model/State";
+import { mapResults } from "../utils";
 
 
 
@@ -13,7 +14,7 @@ export const stateOperations: INodeProperties[] = [
 			{
 				name: 'List',
 				value: 'list',
-				action: 'Return a list of items',
+				action: 'Return a list of states',
 			},
 			{
 				name: 'Set',
@@ -80,36 +81,83 @@ export const stateFields: INodeProperties[] = [
 					loadOptionsMethod: 'load_area_options',
 				},
 			},
+
+			{
+				displayName: 'Resolve Entities',
+				name: 'resolveEntities',
+				type: 'boolean',
+				default: false,
+			},
 		],
 	},
 ]
 
-function filterStates(states: State[], additionalFields: any): State[] {
+function filterStates(states: State[], additionalFields: any, resolveEntities: boolean): State[] {
 	const entityType = additionalFields.entityType
 	const areaId = additionalFields.areaId
 	const entityId = additionalFields.entityId
 
 	return states.filter(state => {
 
-		const inArea = !areaId || areaId.trim() === '' || state.entity_id.startsWith(areaId)
+		const inArea = !areaId || areaId.trim() === '' || state.entity_id.startsWith(areaId) || state.entity?.area_id == areaId || state.entity?.device?.area_id == areaId
 		const inType = !entityType || entityType.trim() === '' || state.entity_id.startsWith(entityType)
 		const inEntity = !entityId || entityId.trim() === '' || state.entity_id === entityId
+
+
+		if(!resolveEntities){
+			// to make sure we adhere to what the user has requested, we need to remove the entity from the state if it should not be resolved
+			// because of the optimization earlier we resolve the entities only once for all states, so we need to remove it again if it should not be resolved
+				state.entity = undefined
+		}
 
 		return inArea && inType && inEntity
 	})
 }
 
-export function executeStateOperation(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<any[]> {
+async function getStates(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<INodeExecutionData[][]> {
+
+	// check if any of the items have the resolveEntities flag set to true. If so, we only want to fetch them once
+	let resolveEntities = false
+	let fetchEntities = false
+	for (let i = 0; i < items.length; i++) {
+		const additionalFields = t.getNodeParameter('additionalFields', i, {});
+
+		// if the user requested to resolve the entiies, or if wee need to filter by area, we fetch the entities as well
+		if (additionalFields.resolveEntities) {
+			fetchEntities = true
+			resolveEntities = true
+			break
+		}
+
+		if (additionalFields.areaId) {
+			fetchEntities = true
+			break
+		}
+	}
+
+	return assistant.get_states(fetchEntities).then(states => {
+		const results: IDataObject[][] = [];
+		for (let i = 0; i < items.length; i++) {
+			const additionalFields = t.getNodeParameter('additionalFields', i, {});
+
+			const filteredStates = filterStates(states, additionalFields, resolveEntities)
+			results.push(filteredStates as any[]); // no need to get areas for each item, its all the same
+		}
+
+		return mapResults(t, items, results);
+	});
+
+
+}
+
+export function executeStateOperation(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<INodeExecutionData[][]> {
 	const operation = t.getNodeParameter("operation", 0) as string
-	const additionalFields = t.getNodeParameter('additionalFields', 0, {});
+
 
 	switch (operation) {
 		case 'list':
-			return assistant.get_states().then(states => filterStates(states, additionalFields));
+			return getStates(t, assistant, items)
 		case 'set':
-			// const stateEntityId = t.getNodeParameter("stateEntityId", 0) as string
-			// const stateState = t.getNodeParameter("stateState", 0) as string
-			// return assistant.set_state(stateEntityId, stateState);
 			throw new Error(`Soon`);
 		default:
 			throw new Error(`Unknown operation: ${operation}`);

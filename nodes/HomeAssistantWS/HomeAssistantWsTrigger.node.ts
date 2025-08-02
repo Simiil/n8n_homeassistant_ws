@@ -168,11 +168,6 @@ export class HomeAssistantWsTrigger implements INodeType {
 				}));
 			})
 
-			assistant.on('error', (error: any) => {
-				stopConsumer();
-				this.emitError(new NodeOperationError(this.getNode(), error));
-			})
-
 			assistant.on('close', () => {
 				stopConsumer();
 				this.emitError(new NodeOperationError(this.getNode(), 'Connection closed unexpectedly'));

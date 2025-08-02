@@ -2,11 +2,11 @@ import { CredentialInformation } from "n8n-workflow";
 import { EventEmitter, WebSocket } from 'ws';
 
 
-import { Entity } from "./model/Entity";
-import { State } from "./model/State";
+import { Area } from "./model/Area";
 import { Config } from "./model/Config";
 import { Device } from "./model/Device";
-import { Area } from "./model/Area";
+import { Entity } from "./model/Entity";
+import { State } from "./model/State";
 import { Trigger } from "./model/Trigger";
 import { SocketConnection } from "./SocketConnection";
 
@@ -39,8 +39,6 @@ export class HomeAssistant {
 	private cmd = new CommandCounter();
 	private ws: SocketConnection<WebSocket>;
 
-	private log: any[] = [];
-
 	// TODO multiplex callbacks so we dont subscribe to the same event multiple times
 	private callbacks: Map<number, (type: MessageType, data: any) => void> = new Map();
 
@@ -58,21 +56,16 @@ export class HomeAssistant {
 			for (let k in data) {
 				options.push(k)
 			}
-			return options
+			return Promise.resolve(options)
 		})
 
 		return promise
 	}
 
 	get_all_entities(): Promise<Entity[]> {
-		const id = this.cmd.get();
 
-		const promise = this.send_with_single_response(id, 'config/entity_registry/list', (data: any) => {
-			return (data as any[])
-				.map(item => Entity.fromJSON(item))
-		})
 
-		return promise
+		return this.get_entities()
 	}
 
 	get_entities(entityType?: string, areaId?: string): Promise<Entity[]> {
@@ -81,29 +74,62 @@ export class HomeAssistant {
 		return this.get_all_devices().then(devices => {
 
 			return this.send_with_single_response(this.cmd.get(), 'config/entity_registry/list', (data: any) => {
-				return (data as any[])
+				const result = (data as any[])
 					.map(item => {
-						const entity =Entity.fromJSON(item)
-						const device = devices.find(d => d.id === item.device_id);
+						const entity = Entity.fromJSON(item)
+						const device = devices.find(d => d.id === entity.device_id);
 						entity.device = device;
 						return entity;
-			})
+					})
 					.filter(item => {
 						const inArea = !areaId || areaId.trim() === '' || item.area_id === areaId || item.device?.area_id === areaId;
 						const inType = !entityType || entityType.trim() === '' || item.entity_type === entityType;
 
 						return inArea && inType;
 					})
+
+				return Promise.resolve(result)
 			})
 		})
 	}
 
-	get_states(): Promise<State[]> {
+	resolve_state(state: State, entities: Entity[]): State {
+		const entity = entities.find(e => e.entity_id === state.entity_id);
+		console.log('resolve_state', state.entity_id, " -> ", entity?.entity_id, " out of ", entities.length, "entities"
+		);
+		state.entity = entity;
+		return state
+	}
+
+	get_states(resolve: boolean = false): Promise<State[]> {
 		const id = this.cmd.get();
-		return this.send_with_single_response(id, 'get_states', (data: any) => {
-			return (data as any[])
-				.map(item => State.fromJSON(item))
-		})
+
+
+			return this.send_with_single_response(id, 'get_states', (data: any) => {
+
+				let resolving: Promise<Entity[]>
+				if(resolve){
+					resolving = this.get_all_entities()
+				} else{
+					resolving = Promise.resolve([])
+				}
+
+				return resolving.then(entities => {
+					const resolvedData = (data as any[])
+						.map(item => State.fromJSON(item))
+						.map(item => {
+							if (resolve) {
+								return this.resolve_state(item, entities)
+							} else {
+								return item
+							}
+						})
+						return Promise.resolve(resolvedData)
+				})
+
+
+			})
+
 	}
 
 	get_components(): Promise<any[]> {
@@ -113,15 +139,15 @@ export class HomeAssistant {
 	get_system_config(): Promise<Config> {
 		const id = this.cmd.get();
 		return this.send_with_single_response(id, 'get_config', (data: any) => {
-			return Config.fromJSON(data)
+			return Promise.resolve(Config.fromJSON(data))
 		})
 	}
 
 	get_all_devices(): Promise<Device[]> {
 		const id = this.cmd.get();
 		return this.send_with_single_response(id, 'config/device_registry/list', (data: any) => {
-			return (data as any[])
-				.map(item => Device.fromJSON(item))
+			return Promise.resolve((data as any[])
+				.map(item => Device.fromJSON(item)))
 		})
 	}
 
@@ -136,60 +162,40 @@ export class HomeAssistant {
 	get_categories(scope: string): Promise<any[]> {
 		const id = this.cmd.get();
 		return this.send_with_single_response(id, 'config/category_registry/list', (data: any) => {
-			return data
+			return Promise.resolve(data)
 		}, { scope: scope })
 	}
 
 	get_areas(): Promise<Area[]> {
 		const id = this.cmd.get();
 		return this.send_with_single_response(id, 'config/area_registry/list', (data: any) => {
-			return (data as any[])
-				.map(item => Area.fromJSON(item))
+			return Promise.resolve((data as any[])
+				.map(item => Area.fromJSON(item)))
 		})
 	}
 
 	get_triggers_for_device(deviceId: string): Promise<Trigger[]> {
 		const id = this.cmd.get();
 		return this.send_with_single_response(id, 'device_automation/trigger/list', (data: any) => {
-			return (data as any[])
-				.map(item => Trigger.fromJSON(item))
+			return Promise.resolve((data as any[])
+				.map(item => Trigger.fromJSON(item)))
 		}, { device_id: deviceId })
 	}
 
 	subscribe_trigger_mapped(device_id: string, triggers: Trigger[]): EventEmitter {
-		const emitter = new EventEmitter();
-
-		const id = this.cmd.get()
-
-
-		this.callbacks.set(id, (type: MessageType, data: any) => {
-			console.log('subscribe_trigger result', data);
-			if (type == MessageType.RESULT) {
-				if (!data['success']) {
-					emitter.emit('error', data['error'])
-					this.callbacks.delete(id)
-				}
-			} else if (type == MessageType.EVENT) {
-				emitter.emit('event', data['event']);
-			} else if (type == MessageType.ERROR || type == MessageType.RESULT_WITH_ERROR) {
-				emitter.emit('error', data);
-			}
-		});
-
-		this.send(id, 'subscribe_trigger', { trigger: triggers })
-		this.log.push({ type: 'subscribe_trigger', params: { trigger: triggers } })
-		return emitter
+		return this.subscribe_generic('subscribe_trigger', { trigger: triggers })
 	}
 
 	async subscribe_trigger(device_id: string, trigger: string[]): Promise<EventEmitter> {
 		console.log('subscribing to trigger...', device_id, trigger);
 		const triggers = await this.get_triggers_for_device(device_id)
 
-		const triggerArray = triggers.filter((t: Trigger) =>  trigger.includes(t.getId()));
+		const triggerArray = triggers.filter((t: Trigger) => trigger.includes(t.getId()));
 		return this.subscribe_trigger_mapped(device_id, triggerArray)
 	}
 
-	subscribe_events(type: string): EventEmitter {
+
+	subscribe_generic(type: string, params: any): EventEmitter {
 		const emitter = new EventEmitter();
 		const id = this.cmd.get();
 		this.callbacks.set(id, (type: MessageType, data: any) => {
@@ -198,16 +204,23 @@ export class HomeAssistant {
 				if (!data['success']) {
 					emitter.emit('error', data['error'])
 					this.callbacks.delete(id)
+				}else{
+					emitter.emit(MessageType.RESULT, data['result']);
 				}
 
 			} else if (type == MessageType.EVENT) {
-				emitter.emit('event', data['event']);
+				emitter.emit(MessageType.EVENT, data['event']);
+			}else if (type == MessageType.ERROR || type == MessageType.RESULT_WITH_ERROR) {
+				emitter.emit(MessageType.ERROR, data);
 			}
 		});
 
-		this.send(id, 'subscribe_events', { event_type: type })
-		this.log.push({ id, type: 'subscribe_events', params: { event_type: type } })
+		this.send(id, type, params)
 		return emitter
+	}
+
+	subscribe_events(type: string): EventEmitter {
+		return this.subscribe_generic(type, { event_type: type })
 	}
 
 	call_service(domain: string, service: string, attributes: any, response: boolean): Promise<any> {
@@ -249,7 +262,7 @@ export class HomeAssistant {
 				}
 			}
 
-			return options
+			return Promise.resolve(options)
 		})
 
 
@@ -269,7 +282,7 @@ export class HomeAssistant {
 		const socket = new SocketConnection(ws)
 		ws.on('message', (event: MessageEvent) => {
 			const data = JSON.parse(event.toString());
-
+			console.log('WebSocket message of id', data['id'], "msg type", data['type'], "success", data['success']);
 			if (data['type'] == 'auth_required') {
 				ws.send(JSON.stringify({
 					type: 'auth',
@@ -281,8 +294,6 @@ export class HomeAssistant {
 			} else {
 				const id = data['id']
 				const type = data['type']
-
-				console.log('WebSocket message', id, type);
 
 				const callback = this.callbacks.get(id)
 				if (callback) {
@@ -302,21 +313,34 @@ export class HomeAssistant {
 		return socket;
 	}
 
+	send_with_response<T>(type: string, mapping: (data: any) => Promise<T>, params?: any): Promise<T> {
+		return this.send_with_single_response(this.cmd.get(), type, mapping, params)
+	}
 
-	private send_with_single_response<T>(id: number, type: string, mapping: (data: any) => T, params?: any): Promise<T> {
+
+	private send_with_single_response<T>(id: number, type: string, mapping: (data: any) => Promise<T>, params?: any): Promise<T> {
 		const promise = new Promise<T>((resolve, reject) => {
 			this.callbacks.set(id, (type: MessageType, data: any) => {
-				this.callbacks.delete(id);
-				if (type == MessageType.RESULT) {
-					const result = data['result']
-					const error = data['error']
-					if (error) {
-						reject(error);
-					} else {
-						resolve(mapping(result));
+				try{
+					this.callbacks.delete(id);
+					if (type == MessageType.RESULT) {
+						const result = data['result']
+						const error = data['error']
+						if (error) {
+							reject(error);
+						} else {
+							const mappedResult = mapping(result)
+							if(mappedResult){
+								mappedResult.then(r => resolve(r))
+							}else{
+								reject(new Error("No result returned from mapping function"))
+							}
+						}
+					} else if (type == MessageType.ERROR) {
+						reject(data);
 					}
-				} else if (type == MessageType.ERROR) {
-					reject(data);
+				} catch(e){
+					reject(e)
 				}
 			});
 		});

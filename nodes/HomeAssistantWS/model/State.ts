@@ -27,6 +27,8 @@
 // 	}
 // },
 
+import { Entity } from "./Entity";
+
 export class State {
 	entity_id: string;
 	state: string;
@@ -35,6 +37,8 @@ export class State {
 	last_reported: string;
 	last_updated: string;
 	context: any;
+
+	entity?: Entity;
 
 	static fromJSON(json: any): State {
 		return Object.assign(new State(), json);
