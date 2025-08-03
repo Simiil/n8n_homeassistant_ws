@@ -15,18 +15,13 @@ export const stateOperations: INodeProperties[] = [
 				name: 'List',
 				value: 'list',
 				action: 'Return a list of states',
-			},
-			{
-				name: 'Set',
-				value: 'set',
-				action: 'Set a state',
-			},
+			}
 		],
 		default: 'list',
 		displayOptions: {
 			show: {
 				resource: [
-					'state' //, 'category', 'device', 'entity',
+					'state'
 				],
 			},
 		},
@@ -157,8 +152,6 @@ export function executeStateOperation(t: IExecuteFunctions, assistant: HomeAssis
 	switch (operation) {
 		case 'list':
 			return getStates(t, assistant, items)
-		case 'set':
-			throw new Error(`Soon`);
 		default:
 			throw new Error(`Unknown operation: ${operation}`);
 	}

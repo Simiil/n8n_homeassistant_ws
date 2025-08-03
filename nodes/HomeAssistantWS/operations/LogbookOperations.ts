@@ -93,7 +93,6 @@ export const logbookFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
-			// context type
 		],
 	}
 ]
