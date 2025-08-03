@@ -44,15 +44,28 @@ export const deviceFields: INodeProperties[] = [
 			},
 		},
 		options: [
+
 			{
 				displayName: 'Area Name or ID',
 				name: 'areaId',
-				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'load_area_options',
-				},
+				type: 'resourceLocator',
+				description: 'The Area to filter by',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchable: true,
+							searchListMethod: 'search_area_options',
+						},
+					},{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+					},
+				]
 			},
 		],
 	},
@@ -69,8 +82,7 @@ export async function executeDeviceOperation(t: IExecuteFunctions, assistant: Ho
 	switch (operation) {
 		case 'list':
 			for (let i = 0; i < items.length; i++) {
-				const additionalFields = t.getNodeParameter('additionalFields', i, {});
-				const areaId = additionalFields.areaId as string ?? ''
+				const areaId = t.getNodeParameter('additionalFields.areaId', i, '', {extractValue: true}) as string;
 				const data = await assistant.get_devices_by_area(areaId);
 				results.push(data as any[]);
 			}

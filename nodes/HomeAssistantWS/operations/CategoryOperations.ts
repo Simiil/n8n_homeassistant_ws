@@ -42,7 +42,6 @@ export const categoryFields: INodeProperties[] = [
 						],
 					},
 				},
-				noDataExpression: true,
 			},
 ]
 

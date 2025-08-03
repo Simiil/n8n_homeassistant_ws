@@ -191,8 +191,8 @@ export class HomeAssistant {
 		return this.get_all_devices().then(devices => devices.find(device => device.id === deviceId))
 	}
 
-	get_devices_by_area(areaId: string): Promise<Device[]> {
-		return this.get_all_devices().then(devices => devices.filter(device => device.area_id === areaId))
+	get_devices_by_area(areaId?: string): Promise<Device[]> {
+		return this.get_all_devices().then(devices => devices.filter(device => !areaId || areaId.trim() === '' || device.area_id === areaId))
 	}
 
 	get_categories(scope: string): Promise<any[]> {
@@ -262,24 +262,24 @@ export class HomeAssistant {
 	call_service(domain: string, service: string, attributes: any, response: boolean): Promise<any> {
 		const id = this.cmd.get();
 
-		if (response) {
+		// if (response) {
 			return this.send_with_single_response(id, 'call_service', (data: any) => {
-				return data
+				return Promise.resolve(data)
 			}, {
 				domain: domain,
 				service: service,
 				service_data: attributes,
 				return_response: response
 			})
-		} else {
-			this.send(id, 'call_service', {
-				domain: domain,
-				service: service,
-				service_data: attributes,
-				return_response: response
-			})
-			return Promise.resolve({})
-		}
+		// } else {
+		// 	this.send(id, 'call_service', {
+		// 		domain: domain,
+		// 		service: service,
+		// 		service_data: attributes,
+		// 		return_response: response
+		// 	})
+		// 	return Promise.resolve({})
+		// }
 	}
 
 	get_service_actions(domain?: string): Promise<any[]> {

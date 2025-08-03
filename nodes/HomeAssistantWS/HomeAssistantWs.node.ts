@@ -8,7 +8,7 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { HomeAssistant } from './HomeAssistant';
-import { load_area_options, load_component_options, load_device_options, load_entity_options, load_service_domain_options, load_service_options } from './loadOptions';
+import { load_area_options, load_component_options, load_device_options, load_entity_options, load_service_domain_options, load_service_options, search_area_options, search_component_options, search_device_options, search_entity_options, search_service_domain_options, search_service_options, search_trigger_options } from './loadOptions';
 import { areaFields, areaOperations, executeAreaOperation } from './operations/AreaOperations';
 import { categoryFields, categoryOperations, executeCategoryOperations } from './operations/CategoryOperations';
 import { deviceFields, deviceOperations, executeDeviceOperation } from './operations/DeviceOperations';
@@ -153,6 +153,15 @@ export class HomeAssistantWs implements INodeType {
 			load_device_options,
 			load_service_options,
 			load_service_domain_options,
+		},
+		listSearch: {
+			search_component_options,
+			search_area_options,
+			search_entity_options,
+			search_device_options,
+			search_service_options,
+			search_service_domain_options,
+			search_trigger_options,
 		}
 	}
 

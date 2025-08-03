@@ -1,6 +1,33 @@
-import { ILoadOptionsFunctions, INodePropertyOptions } from "n8n-workflow";
+import { ILoadOptionsFunctions, INodeListSearchResult, INodePropertyOptions } from "n8n-workflow";
 import { HomeAssistant } from "./HomeAssistant";
 
+
+
+async function map_options_to_search(
+	this: ILoadOptionsFunctions,
+	fn: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	console.log('search_component_options', filter);
+
+	return await fn.call(this).then(res => {
+		let results: INodePropertyOptions[]
+
+		if(filter){
+			results = res.filter(r =>
+				r.name.toLowerCase().includes(filter?.toLowerCase() ?? '') ||
+				r.value?.toString().toLowerCase().includes(filter?.toLowerCase() ?? '') ||
+				r.description?.toLowerCase().includes(filter?.toLowerCase() ?? '')
+			)
+		}else{
+			results = res
+		}
+
+		return {
+			results: results
+		}
+	})
+}
 
 export async function load_component_options(
 	this: ILoadOptionsFunctions,
@@ -13,17 +40,32 @@ export async function load_component_options(
 	})
 }
 
+export async function search_component_options(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await map_options_to_search.call(this, load_component_options, filter)
+}
+
+
 export async function load_service_options(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 
 	const cred = await this.getCredentials('homeAssistantWsApi');
 	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
-		const domain = this.getNodeParameter('serviceDomain', "") as string
+		const domain = this.getNodeParameter('serviceDomain', "", {extractValue: true}) as string
 		const services = await assistant.get_service_actions(domain)
 
 		return services.map(service => ({ name: service.name, value: service.id, description: service.description }))
 	})
+}
+
+export async function search_service_options(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await map_options_to_search.call(this, load_service_options, filter)
 }
 
 
@@ -38,6 +80,15 @@ export async function load_service_domain_options(
 		return services.map(service => ({ name: service, value: service }))
 	})
 }
+
+
+export async function search_service_domain_options(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await map_options_to_search.call(this, load_service_domain_options, filter)
+}
+
 
 export async function load_entity_options(
 	this: ILoadOptionsFunctions,
@@ -67,6 +118,15 @@ export async function load_entity_options(
 }
 
 
+export async function search_entity_options(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await map_options_to_search.call(this, load_entity_options, filter)
+}
+
+
+
 export async function load_device_options(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
@@ -80,6 +140,15 @@ export async function load_device_options(
 		})
 	})
 }
+
+
+export async function search_device_options(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await map_options_to_search.call(this, load_device_options, filter)
+}
+
 
 
 export async function load_trigger_options(
@@ -104,6 +173,15 @@ export async function load_trigger_options(
 	})
 }
 
+
+export async function search_trigger_options(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await map_options_to_search.call(this, load_trigger_options, filter)
+}
+
+
 export async function load_area_options(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
@@ -114,3 +192,12 @@ export async function load_area_options(
 		return components.map(area => ({ name: area.name, value: area.area_id }))
 	})
 }
+
+
+export async function search_area_options(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await map_options_to_search.call(this, load_area_options, filter)
+}
+

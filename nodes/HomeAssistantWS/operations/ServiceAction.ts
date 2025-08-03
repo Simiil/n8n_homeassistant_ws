@@ -32,38 +32,60 @@ export const serviceActionOperations: INodeProperties[] = [
 		noDataExpression: true,
 	},
 	{
-		displayName: 'Service Domain Name or ID',
-		name: 'serviceDomain',
-		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-		default: '',
-		typeOptions: {
-			loadOptionsMethod: 'load_service_domain_options',
-		},
+		displayName: 'Service Domain ID',
+		name: 'serviceDomainId',
+		type: 'resourceLocator',
+		description: 'The ID of the service domain to execute',
+		default: { mode: 'list', value: '' },
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchable: true,
+					searchListMethod: 'search_service_domain_options',
+				},
+			},
+			{
+				displayName: 'By Name',
+				name: 'name',
+				type: 'string',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
 					'serviceAction'
 				],
 				operation: [
-					'execute'
+					'execute', 'list'
 				],
 			},
 		},
 	},
 	{
-		displayName: 'Service Name or ID',
-		name: 'serviceName',
-		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-		default: '',
-		typeOptions: {
-			loadOptionsDependsOn: [
-				'serviceDomain'
-			],
-			loadOptionsMethod: 'load_service_options',
-		},
-
+		displayName: 'Service ID',
+		name: 'serviceId',
+		type: 'resourceLocator',
+		description: 'The ID of the service to execute',
+		default: { mode: 'list', value: '' },
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchable: true,
+					searchListMethod: 'search_service_options',
+				},
+			},
+			{
+				displayName: 'By Name',
+				name: 'name',
+				type: 'string',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
@@ -142,54 +164,7 @@ export const serviceActionOperations: INodeProperties[] = [
 
 ]
 export const serviceActionFields: INodeProperties[] = [
-	// {
-	// 	displayName: 'Additional Fields',
-	// 	name: 'additionalFields',
-	// 	type: 'collection',
-	// 	placeholder: 'Add Field',
-	// 	default: {},
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'serviceAction',
-	// 			],
-	// 		},
-	// 	},
-	// 	options: [
-	// 		{
-	// 			displayName: 'Service Name',
-	// 			name: 'serviceName',
-	// 			type: 'options',
-	// 			description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-	// 			default: '',
-	// 			typeOptions: {
-	// 				loadOptionsMethod: 'load_component_options',
-	// 			},
-	// 		},
 
-	// 		{
-	// 			displayName: 'Entity Name or ID',
-	// 			name: 'entityId',
-	// 			type: 'options',
-	// 			description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-	// 			default: '',
-	// 			typeOptions: {
-	// 				loadOptionsMethod: 'load_entity_options',
-	// 			},
-	// 		},
-
-	// 		{
-	// 			displayName: 'Area Name or ID',
-	// 			name: 'areaId',
-	// 			type: 'options',
-	// 			description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-	// 			default: '',
-	// 			typeOptions: {
-	// 				loadOptionsMethod: 'load_area_options',
-	// 			},
-	// 		},
-	// 	],
-	// },
 ]
 
 export async function executeServiceActionOperation(t: IExecuteFunctions, assistant: HomeAssistant, items: IDataObject[]): Promise<INodeExecutionData[][]> {
@@ -221,8 +196,8 @@ export async function executeServiceActionOperation(t: IExecuteFunctions, assist
 }
 async function executeServerAction(t: IExecuteFunctions, assistant: HomeAssistant, item: number): Promise<any> {
 	const additionalFields = t.getNodeParameter('additionalFields', item, {});
-	const serviceDomain = t.getNodeParameter("serviceDomain", item) as string;
-	const serviceName = t.getNodeParameter("serviceName", item) as string;
+	const serviceDomain = t.getNodeParameter("serviceDomainId", item, '', {extractValue: true}) as string;
+	const serviceName = t.getNodeParameter("serviceId", item, '', {extractValue: true}) as string;
 	const serviceAttributes = t.getNodeParameter("serviceAttributes", item, {}) as {
 		attributes: IDataObject[];
 	};

@@ -47,34 +47,73 @@ export const stateFields: INodeProperties[] = [
 			{
 				displayName: 'Entity Type Name or ID',
 				name: 'entityType',
-				type: 'options',
+				type: 'resourceLocator',
 				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'load_component_options',
-				},
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchable: true,
+							searchListMethod: 'search_component_options',
+						},
+					},
+					{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+					},
+				],
 			},
 
 			{
 				displayName: 'Entity Name or ID',
 				name: 'entityId',
-				type: 'options',
+				type: 'resourceLocator',
 				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'load_entity_options',
-				},
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchable: true,
+							searchListMethod: 'search_entity_options',
+						},
+					},
+					{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+					},
+				],
 			},
 
 			{
 				displayName: 'Area Name or ID',
 				name: 'areaId',
-				type: 'options',
+				type: 'resourceLocator',
 				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'load_area_options',
-				},
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchable: true,
+							searchListMethod: 'search_area_options',
+						},
+					},
+					{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+					},
+				],
 			},
 
 			{
@@ -87,10 +126,10 @@ export const stateFields: INodeProperties[] = [
 	},
 ]
 
-function filterStates(states: State[], additionalFields: any, resolveEntities: boolean): State[] {
-	const entityType = additionalFields.entityType
-	const areaId = additionalFields.areaId
-	const entityId = additionalFields.entityId
+function filterStates(states: State[], t: IExecuteFunctions, i: number, resolveEntities: boolean): State[] {
+	const entityType = t.getNodeParameter('additionalFields.entityType', i, '', {extractValue: true}) as string
+	const areaId = t.getNodeParameter('additionalFields.areaId', i, '', {extractValue: true}) as string
+	const entityId = t.getNodeParameter('additionalFields.entityId', i, '', {extractValue: true}) as string
 
 	return states.filter(state => {
 
@@ -133,9 +172,9 @@ async function getStates(t: IExecuteFunctions, assistant: HomeAssistant, items: 
 	return assistant.get_states(fetchEntities).then(states => {
 		const results: IDataObject[][] = [];
 		for (let i = 0; i < items.length; i++) {
-			const additionalFields = t.getNodeParameter('additionalFields', i, {});
 
-			const filteredStates = filterStates(states, additionalFields, resolveEntities)
+
+			const filteredStates = filterStates(states, t,i, resolveEntities)
 			results.push(filteredStates as any[]); // no need to get areas for each item, its all the same
 		}
 

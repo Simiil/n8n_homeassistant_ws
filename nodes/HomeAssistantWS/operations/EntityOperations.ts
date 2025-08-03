@@ -42,37 +42,76 @@ export const entityFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Entity Type Name or ID',
+				displayName: 'Entity Type',
 				name: 'entityType',
-				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'load_component_options',
-				},
+				type: 'resourceLocator',
+
+				description: 'The Entity Type to filter by',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchable: true,
+							searchListMethod: 'search_component_options',
+						},
+					},{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+					},
+
+				]
+
 			},
 
 			{
-				displayName: 'Area Name or ID',
+				displayName: 'Area ID',
 				name: 'areaId',
-				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'load_area_options',
-				},
+				type: 'resourceLocator',
+				description: 'The Area ID to filter by',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchable: true,
+							searchListMethod: 'search_area_options',
+						},
+					},{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+					},
+				]
 			},
 
 
 			{
-				displayName: 'Device Name or ID',
+				displayName: 'Device ID',
 				name: 'deviceId',
-				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'load_device_options',
-				},
+				type: 'resourceLocator',
+				description: 'The Device ID to filter by',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchable: true,
+							searchListMethod: 'search_device_options',
+						},
+					},{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+					},
+				]
 			},
 		],
 	},
@@ -89,10 +128,10 @@ export async function executeEntityOperation(t: IExecuteFunctions, assistant: Ho
 	switch (operation) {
 		case 'list':
 			for (let i = 0; i < items.length; i++) {
-				const additionalFields = t.getNodeParameter('additionalFields', i, {});
-				const areaId = additionalFields.areaId as string ?? ''
-				const entityType = additionalFields.entityType as string ?? ''
-				const deviceId = additionalFields.deviceId as string ?? ''
+				const areaId = t.getNodeParameter('additionalFields.areaId', i, '', {extractValue: true,}) as string
+				const entityType = t.getNodeParameter('additionalFields.entityType', i, '', {extractValue: true,}) as string
+				const deviceId = t.getNodeParameter('additionalFields.deviceId', i, '', {extractValue: true,}) as string
+
 				const data = await assistant.get_entities(entityType, areaId, deviceId);
 				results.push(data as any[]);
 			}
