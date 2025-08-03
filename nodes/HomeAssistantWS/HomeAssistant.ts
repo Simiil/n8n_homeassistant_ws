@@ -10,6 +10,11 @@ import { State } from "./model/State";
 import { Trigger } from "./model/Trigger";
 import { SocketConnection } from "./SocketConnection";
 
+
+import {
+	LoggerProxy as Logger
+} from 'n8n-workflow';
+
 export class CommandCounter {
 	private cmd = 1;
 	get(): number {
@@ -40,7 +45,6 @@ export class HomeAssistant {
 	private cmd = new CommandCounter();
 	private ws: SocketConnection<WebSocket>;
 
-	// TODO multiplex callbacks so we dont subscribe to the same event multiple times
 	private callbacks: Map<number, (type: MessageType, data: any) => void> = new Map();
 
 	constructor(private host: CredentialInformation, private apiKey: CredentialInformation) {
@@ -58,7 +62,6 @@ export class HomeAssistant {
 		const params: any = {
 			start_time: startTime
 		}
-		console.log('get_logbook', startTime, endTime, deviceIds, entityIds, contextId);
 
 		if(endTime){
 			params.end_time = endTime
@@ -131,8 +134,7 @@ export class HomeAssistant {
 
 	resolve_state(state: State, entities: Entity[]): State {
 		const entity = entities.find(e => e.entity_id === state.entity_id);
-		console.log('resolve_state', state.entity_id, " -> ", entity?.entity_id, " out of ", entities.length, "entities"
-		);
+
 		state.entity = entity;
 		return state
 	}
@@ -223,7 +225,6 @@ export class HomeAssistant {
 	}
 
 	async subscribe_trigger(device_id: string, trigger: string[]): Promise<EventEmitter> {
-		console.log('subscribing to trigger...', device_id, trigger);
 		const triggers = await this.get_triggers_for_device(device_id)
 
 		const triggerArray = triggers.filter((t: Trigger) => trigger.includes(t.getId()));
@@ -235,7 +236,7 @@ export class HomeAssistant {
 		const emitter = new EventEmitter();
 		const id = this.cmd.get();
 		this.callbacks.set(id, (type: MessageType, data: any) => {
-			console.log('subscribe_events result', data);
+
 			if (type == MessageType.RESULT) {
 				if (!data['success']) {
 					emitter.emit('error', data['error'])
@@ -256,13 +257,12 @@ export class HomeAssistant {
 	}
 
 	subscribe_events(type: string): EventEmitter {
-		return this.subscribe_generic(type, { event_type: type })
+		return this.subscribe_generic("subscribe_events", { event_type: type })
 	}
 
 	call_service(domain: string, service: string, attributes: any, response: boolean): Promise<any> {
 		const id = this.cmd.get();
 
-		// if (response) {
 			return this.send_with_single_response(id, 'call_service', (data: any) => {
 				return Promise.resolve(data)
 			}, {
@@ -271,15 +271,6 @@ export class HomeAssistant {
 				service_data: attributes,
 				return_response: response
 			})
-		// } else {
-		// 	this.send(id, 'call_service', {
-		// 		domain: domain,
-		// 		service: service,
-		// 		service_data: attributes,
-		// 		return_response: response
-		// 	})
-		// 	return Promise.resolve({})
-		// }
 	}
 
 	get_service_actions(domain?: string): Promise<any[]> {
@@ -314,24 +305,21 @@ export class HomeAssistant {
 			followRedirects: true,
 		});
 
-		console.log('WebSocket connection...');
 		const socket = new SocketConnection(ws)
 		ws.on('message', (event: MessageEvent) => {
 			const data = JSON.parse(event.toString());
-			console.log('WebSocket message of id', data['id'], "msg type", data['type'], "success", data['success']);
 			if (data['type'] == 'auth_required') {
 				ws.send(JSON.stringify({
 					type: 'auth',
 					access_token: this.apiKey,
 				}));
 			} else if (data['type'] == 'auth_ok') {
-				console.log('WebSocket connection authenticated');
 				socket.ready();
 			} else {
 				const id = data['id']
 				const type = data['type']
-
 				const callback = this.callbacks.get(id)
+
 				if (callback) {
 					callback(type, data)
 				}
@@ -340,10 +328,6 @@ export class HomeAssistant {
 
 		ws.on('error', (error: any) => {
 			console.error('WebSocket error', error);
-		});
-
-		ws.on('close', () => {
-			console.log('WebSocket closed');
 		});
 
 		return socket;
@@ -397,9 +381,8 @@ export class HomeAssistant {
 			id: id,
 			...params
 		})
-
+		Logger.info(`send ${id} ${type} ${jsonString}`);
 		return this.ws.then(ws => {
-			console.log('send', id, type, jsonString);
 			ws.send(jsonString)
 		});
 	}

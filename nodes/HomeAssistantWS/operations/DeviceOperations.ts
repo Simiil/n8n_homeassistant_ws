@@ -18,7 +18,7 @@ export const deviceOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'device' //, 'category', 'area', 'entity',
+					'device'
 				],
 			},
 		},

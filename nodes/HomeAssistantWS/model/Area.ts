@@ -1,15 +1,4 @@
 
-//			"aliases": [],
-// "area_id": "living_room",
-// "floor_id": null,
-// "humidity_entity_id": null,
-// "icon": null,
-// "labels": [],
-// "name": "Living Room",
-// "picture": null,
-// "temperature_entity_id": null,
-// "created_at": 1753112707.336984,
-// "modified_at": 1753112707.336995
 export class Area {
 	aliases: string[];
 	area_id: string;

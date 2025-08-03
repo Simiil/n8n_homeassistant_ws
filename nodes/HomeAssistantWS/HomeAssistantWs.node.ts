@@ -104,43 +104,6 @@ export class HomeAssistantWs implements INodeType {
 			...logbookOperations,
 			...logbookFields,
 
-
-			// TODO: config
-			// event
-			// history
-			// log
-			// service
-			// template
-
-
-			// {
-			// 	displayName: 'Operation',
-			// 	name: 'operation',
-			// 	type: 'options',
-			// 	options: [
-			// 		{
-			// 			name: 'List',
-			// 			value: 'list',
-			// 			action: 'Return a list of items',
-			// 		},
-			// 		{
-			// 			name: 'Set',
-			// 			value: 'set',
-			// 			action: 'Set a state',
-			// 		},
-			// 	],
-			// 	default: 'list',
-			// 	displayOptions: {
-			// 		show: {
-			// 			resource: [
-			// 				'state',
-			// 			],
-			// 		},
-			// 	},
-			// 	noDataExpression: true,
-			// },
-
-
 		],
 
 	}
@@ -167,11 +130,7 @@ export class HomeAssistantWs implements INodeType {
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		// const items = this.getInputData();
 
-		// const operation = this.getNodeParameter('operation', 0);
-
-		// open websocket with socket.io
 		const items = this.getInputData();
 
 		const cred = await this.getCredentials('homeAssistantWsApi');
@@ -211,8 +170,5 @@ export class HomeAssistantWs implements INodeType {
 		assistant.close();
 		return resultData;
 
-		// return resultPromise.then(items=>
-		// 	[this.helpers.returnJsonArray(items as IDataObject[])]
-		// );
 	}
 }

@@ -42,7 +42,6 @@ export class HomeAssistantWsTriggerGeneric  implements INodeType {
 
 		const startConsumer = async () => {
 			running = true;
-			console.log('starting consumer...');
 			const cred = await this.getCredentials('homeAssistantWsApi');
 			assistant = new HomeAssistant(cred.host, cred.apiKey)
 
@@ -91,7 +90,6 @@ export class HomeAssistantWsTriggerGeneric  implements INodeType {
 		}
 
 		async function stopConsumer() {
-			console.log('stopping consumer...');
 			// remove all listeners so we dont trigger the unexpected closed error
 			await assistant?.removeAllListeners();
 			await assistant?.close();
@@ -101,7 +99,6 @@ export class HomeAssistantWsTriggerGeneric  implements INodeType {
 
 		async function manualTriggerFunction() {
 			if(!running){
-				console.log('manualTriggerFunction');
 				await startConsumer();
 			}
 		}

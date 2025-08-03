@@ -26,20 +26,4 @@ export class HomeAssistantWsApi implements ICredentialType {
 		},
 	];
 	documentationUrl = 'https://developers.home-assistant.io/docs/api/websocket';
-
-	// authenticate: IAuthenticateGeneric = {
-	// 	type: 'generic',
-	// 	properties: {
-	// 		headers: {
-	// 			Authorization: '=Bearer {{$credentials.apiKey}}',
-	// 		},
-	// 	},
-	// };
-
-	// test: ICredentialTestRequest = {
-	// 	request: {
-	// 		baseURL: 'https://api.sendgrid.com/v3',
-	// 		url: '/marketing/contacts',
-	// 	},
-	// };
 }

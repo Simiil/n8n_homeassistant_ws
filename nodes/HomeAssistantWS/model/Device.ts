@@ -1,38 +1,4 @@
-// {
-// 	"area_id": "bedroom",
-// 	"configuration_url": null,
-// 	"config_entries": [
-// 		"01K0PTYT3GJXQPSAXKBXKERQ2Z"
-// 	],
-// 	"config_entries_subentries": {
-// 		"01K0PTYT3GJXQPSAXKBXKERQ2Z": [
-// 			null
-// 		]
-// 	},
-// 	"connections": [],
-// 	"created_at": 1753116811.008451,
-// 	"disabled_by": null,
-// 	"entry_type": null,
-// 	"hw_version": "1",
-// 	"id": "e3799725c8b64b64804dfd88e07ae08a",
-// 	"identifiers": [
-// 		[
-// 			"mqtt",
-// 			"zigbee2mqtt_0x000b57fffeeb0f02"
-// 		]
-// 	],
-// 	"labels": [],
-// 	"manufacturer": "IKEA",
-// 	"model": "FLOALT light panel, white spectrum, 30x30 cm",
-// 	"model_id": "L1527",
-// 	"modified_at": 1753119317.923934,
-// 	"name_by_user": null,
-// 	"name": "FLOALT Bedroom PC",
-// 	"primary_config_entry": "01K0PTYT3GJXQPSAXKBXKERQ2Z",
-// 	"serial_number": null,
-// 	"sw_version": "2.3.087",
-// 	"via_device_id": "84cdc7f88cda6f704282155d1f784585"
-// },
+
 
 export class Device {
 	area_id: string;

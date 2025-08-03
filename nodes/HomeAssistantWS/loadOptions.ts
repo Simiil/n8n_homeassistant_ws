@@ -8,8 +8,6 @@ async function map_options_to_search(
 	fn: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	console.log('search_component_options', filter);
-
 	return await fn.call(this).then(res => {
 		let results: INodePropertyOptions[]
 
@@ -162,14 +160,10 @@ export async function load_trigger_options(
 	const cred = await this.getCredentials('homeAssistantWsApi');
 	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
 		const triggers = await assistant.get_triggers_for_device(deviceId as string)
-		console.log('triggers', triggers);
 		return triggers.map(trigger => {
 
 			return ({ name: trigger.getName(), value: trigger.getId(), description: trigger.domain ?? '' })
 		})
-	}).then(options => {
-		console.log('options', options);
-		return options;
 	})
 }
 

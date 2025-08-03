@@ -1,4 +1,3 @@
-//config/category_registry/list
 
 import { IDataObject, IExecuteFunctions, INodeExecutionData, INodeProperties } from "n8n-workflow";
 import { HomeAssistant } from "../HomeAssistant";
@@ -21,7 +20,7 @@ export const categoryOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [
-					'category' //, 'category', 'device', 'entity',
+					'category'
 				],
 			},
 		},
@@ -49,9 +48,6 @@ export async function executeCategoryOperations(t: IExecuteFunctions, assistant:
 
 	const results: IDataObject[][] = [];
 	const operation = t.getNodeParameter('operation', 0); // all operations are the same
-
-
-	console.log('operation', operation);
 
 	switch (operation) {
 		case 'list': {

@@ -32,9 +32,6 @@ export async function executeAreaOperation(t: IExecuteFunctions, assistant: Home
 	const results: IDataObject[][] = [];
 	const operation = t.getNodeParameter('operation', 0); // all operations are the same
 
-
-	console.log('operation', operation);
-
 	switch (operation) {
 		case 'list': {
 			const areas = await assistant.get_areas() as any[];
