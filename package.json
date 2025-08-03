@@ -36,7 +36,7 @@
       "dist/credentials/HomeAssistantWsApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/HomeAssistantWS/HomeAssistantWS.node.js",
+      "dist/nodes/HomeAssistantWS/HomeAssistantWs.node.js",
       "dist/nodes/HomeAssistantWS/HomeAssistantWsTrigger.node.js",
       "dist/nodes/HomeAssistantWS/HomeAssistantWsGeneric.node.js",
       "dist/nodes/HomeAssistantWS/HomeAssistantWsTriggerGeneric.node.js"
