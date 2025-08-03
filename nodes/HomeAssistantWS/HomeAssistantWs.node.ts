@@ -8,13 +8,14 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { HomeAssistant } from './HomeAssistant';
-import { load_area_options, load_component_options, load_entity_options, load_service_domain_options, load_service_options } from './loadOptions';
+import { load_area_options, load_component_options, load_device_options, load_entity_options, load_service_domain_options, load_service_options } from './loadOptions';
 import { areaFields, areaOperations, executeAreaOperation } from './operations/AreaOperations';
 import { categoryFields, categoryOperations, executeCategoryOperations } from './operations/CategoryOperations';
 import { deviceFields, deviceOperations, executeDeviceOperation } from './operations/DeviceOperations';
 import { entityFields, entityOperations, executeEntityOperation } from './operations/EntityOperations';
 import { executeStateOperation, stateFields, stateOperations } from './operations/StateOperations';
 import { executeServiceActionOperation, serviceActionFields, serviceActionOperations } from './operations/ServiceAction';
+import { executeLogbookOperation, logbookFields, logbookOperations } from './operations/LogbookOperations';
 
 
 
@@ -64,6 +65,10 @@ export class HomeAssistantWs implements INodeType {
 						value: 'entity',
 					},
 					{
+						name: 'Logbook',
+						value: 'logbook',
+					},
+					{
 						name: 'Service Action',
 						value: 'serviceAction',
 					},
@@ -95,6 +100,9 @@ export class HomeAssistantWs implements INodeType {
 
 			...serviceActionOperations,
 			...serviceActionFields,
+
+			...logbookOperations,
+			...logbookFields,
 
 
 			// TODO: config
@@ -142,6 +150,7 @@ export class HomeAssistantWs implements INodeType {
 			load_component_options,
 			load_area_options,
 			load_entity_options,
+			load_device_options,
 			load_service_options,
 			load_service_domain_options,
 		}
@@ -182,6 +191,9 @@ export class HomeAssistantWs implements INodeType {
 				break;
 			case 'serviceAction':
 				resultData = await executeServiceActionOperation(this, assistant, items);
+				break;
+			case 'logbook':
+				resultData = await executeLogbookOperation(this, assistant, items);
 				break;
 		}
 

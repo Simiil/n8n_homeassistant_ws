@@ -9,7 +9,7 @@ export function genericNodeProperties(withResponseOption: boolean): INodePropert
 			name: 'type',
 			type: 'string',
 			default: '',
-			noDataExpression: true,
+			noDataExpression: false,
 		},
 	]
 

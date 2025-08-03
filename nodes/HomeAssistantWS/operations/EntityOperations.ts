@@ -62,6 +62,18 @@ export const entityFields: INodeProperties[] = [
 					loadOptionsMethod: 'load_area_options',
 				},
 			},
+
+
+			{
+				displayName: 'Device Name or ID',
+				name: 'deviceId',
+				type: 'options',
+				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'load_device_options',
+				},
+			},
 		],
 	},
 ]
@@ -80,7 +92,8 @@ export async function executeEntityOperation(t: IExecuteFunctions, assistant: Ho
 				const additionalFields = t.getNodeParameter('additionalFields', i, {});
 				const areaId = additionalFields.areaId as string ?? ''
 				const entityType = additionalFields.entityType as string ?? ''
-				const data = await assistant.get_entities(entityType, areaId);
+				const deviceId = additionalFields.deviceId as string ?? ''
+				const data = await assistant.get_entities(entityType, areaId, deviceId);
 				results.push(data as any[]);
 			}
 			break;

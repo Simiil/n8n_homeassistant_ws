@@ -27,6 +27,7 @@ enum MessageType {
 }
 
 export class HomeAssistant {
+
 	oneShot<T>(callback: (a: HomeAssistant) => Promise<T>): Promise<T> {
 		const result = callback(this)
 			.then(x => {
@@ -46,7 +47,40 @@ export class HomeAssistant {
 		this.ws = this.get_authenticated_ws();
 	}
 
+	get_logbook(
+		startTime: any,
+		endTime: any,
+		deviceIds: any,
+		entityIds: any,
+		contextId: any
+	) {
 
+		const params: any = {
+			start_time: startTime
+		}
+		console.log('get_logbook', startTime, endTime, deviceIds, entityIds, contextId);
+
+		if(endTime){
+			params.end_time = endTime
+		}
+
+		if(deviceIds){
+			params.device_ids = deviceIds
+		}
+
+		if(entityIds){
+			params.entity_ids = entityIds
+		}
+
+		if(contextId){
+			params.context_id = contextId
+		}
+
+		const id = this.cmd.get();
+		return this.send_with_single_response(id, 'logbook/get_events', (data: any) => {
+			return Promise.resolve(data as any[])
+		}, params)
+	}
 
 	get_service_domains(): Promise<string[]> {
 		const id = this.cmd.get();
@@ -68,7 +102,7 @@ export class HomeAssistant {
 		return this.get_entities()
 	}
 
-	get_entities(entityType?: string, areaId?: string): Promise<Entity[]> {
+	get_entities(entityType?: string, areaId?: string, deviceId?: string): Promise<Entity[]> {
 
 
 		return this.get_all_devices().then(devices => {
@@ -85,7 +119,9 @@ export class HomeAssistant {
 						const inArea = !areaId || areaId.trim() === '' || item.area_id === areaId || item.device?.area_id === areaId;
 						const inType = !entityType || entityType.trim() === '' || item.entity_type === entityType;
 
-						return inArea && inType;
+						const inDevice = !deviceId || deviceId.trim() === '' || item.device_id === deviceId;
+
+						return inArea && inType && inDevice;
 					})
 
 				return Promise.resolve(result)
