@@ -98,42 +98,34 @@ export const serviceActionOperations: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Service Attributes',
-		name: 'serviceAttributes',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
+		displayName: 'Service Attribute Fields',
+		name: 'serviceAttributeFields',
+		type: 'resourceMapper',
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
 		},
-		placeholder: 'Add Attribute',
-		default: {},
+		noDataExpression: true,
+		required: true,
+		typeOptions: {
+			loadOptionsDependsOn: ['serviceDomainId.value', 'serviceId.value'],
+			resourceMapper: {
+				resourceMapperMethod: 'getMappingColumns',
+				mode: 'add',
+				fieldWords: {
+					singular: 'field',
+					plural: 'fields',
+				},
+				addAllFields: false,
+				multiKeyMatch: true,
+			},
+		},
 		displayOptions: {
 			show: {
 				resource: ['serviceAction'],
 				operation: ['execute'],
 			},
 		},
-		options: [
-			{
-				name: 'attributes',
-				displayName: 'Attributes',
-				values: [
-					{
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						default: '',
-						description: 'Name of the field',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-						description: 'Value of the field',
-					},
-				],
-			},
-		],
 	},
 	{
 		displayName: 'Additional Fields',
@@ -177,7 +169,7 @@ export async function executeServiceActionOperation(t: IExecuteFunctions, assist
 			const data = await assistant.get_service_actions()
 
 			for (let i = 0; i < items.length; i++) {
-				results.push(data);
+				results.push(data as any[]);
 			}
 			break;
 		}
@@ -198,14 +190,13 @@ async function executeServerAction(t: IExecuteFunctions, assistant: HomeAssistan
 	const additionalFields = t.getNodeParameter('additionalFields', item, {});
 	const serviceDomain = t.getNodeParameter("serviceDomainId", item, '', {extractValue: true}) as string;
 	const serviceName = t.getNodeParameter("serviceId", item, '', {extractValue: true}) as string;
-	const serviceAttributes = t.getNodeParameter("serviceAttributes", item, {}) as {
-		attributes: IDataObject[];
-	};
+	const serviceAttributeFields = (t.getNodeParameter("serviceAttributeFields", item) as IDataObject)?.value as IDataObject;
 
 	const serviceData: IDataObject = {};
-	serviceAttributes.attributes?.map(attribute => {
-		serviceData[attribute.name as string] = attribute.value;
-	});
+	for(let f in serviceAttributeFields){
+			serviceData[f] = serviceAttributeFields[f];
+	}
+
 
 	const response = additionalFields.response as boolean;
 

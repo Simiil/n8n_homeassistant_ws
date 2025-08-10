@@ -52,7 +52,7 @@ export async function load_service_options(
 
 	const cred = await this.getCredentials('homeAssistantWsApi');
 	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
-		const domain = this.getNodeParameter('serviceDomain', "", {extractValue: true}) as string
+		const domain = this.getNodeParameter('serviceDomainId', "", {extractValue: true}) as string
 		const services = await assistant.get_service_actions(domain)
 
 		return services.map(service => ({ name: service.name, value: service.id, description: service.description }))

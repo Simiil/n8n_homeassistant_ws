@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-base.HomeAssistantWs",
+	"node": "n8n-nodes-base.HomeAssistantWsGeneric",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [

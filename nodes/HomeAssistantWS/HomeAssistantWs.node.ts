@@ -16,6 +16,8 @@ import { entityFields, entityOperations, executeEntityOperation } from './operat
 import { executeStateOperation, stateFields, stateOperations } from './operations/StateOperations';
 import { executeServiceActionOperation, serviceActionFields, serviceActionOperations } from './operations/ServiceAction';
 import { executeLogbookOperation, logbookFields, logbookOperations } from './operations/LogbookOperations';
+import { credentialTest }  from './cred';
+import { getMappingColumns } from './serviceMapping';
 
 
 
@@ -125,6 +127,10 @@ export class HomeAssistantWs implements INodeType {
 			search_service_options,
 			search_service_domain_options,
 			search_trigger_options,
+		},
+		credentialTest,
+		resourceMapping: {
+			getMappingColumns,
 		}
 	}
 

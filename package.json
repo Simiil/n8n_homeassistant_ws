@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-homeassistantws",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Connect to Home Assistant through WebSockets",
   "keywords": [
     "n8n-community-node-package"
@@ -39,7 +39,7 @@
       "dist/nodes/HomeAssistantWS/HomeAssistantWs.node.js",
       "dist/nodes/HomeAssistantWS/HomeAssistantWsTrigger.node.js",
       "dist/nodes/HomeAssistantWS/HomeAssistantWsGeneric.node.js",
-      "dist/nodes/HomeAssistantWS/HomeAssistantWsTriggerGeneric.node.js"
+      "dist/nodes/HomeAssistantWS/HomeAssistantWsGenericTrigger.node.js"
     ]
   },
   "devDependencies": {

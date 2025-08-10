@@ -2,18 +2,19 @@ import { INodeType, INodeTypeDescription, ITriggerFunctions, ITriggerResponse, N
 import { HomeAssistant } from "./HomeAssistant";
 import { EventEmitter } from "ws";
 import { genericNodeProperties, parseQueryParams } from "./operations/GenericProperties";
+import { credentialTest }  from './cred';
 
-export class HomeAssistantWsTriggerGeneric  implements INodeType {
+export class HomeAssistantWsGenericTrigger  implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Home Assistant WS Generic Trigger',
-		name: 'homeAssistantWsTriggerGeneric',
+		displayName: 'Home Assistant Generic WS Trigger',
+		name: 'homeAssistantWsGenericTrigger',
 		icon: 'file:homeAssistantWs.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{ $parameter["type"] }}',
 		description: 'Starts a Workflow on a Generic Home Assistant Event',
 		defaults: {
-			name: 'Home Assistant WS Generic Trigger',
+			name: 'Home Assistant Generic WS Trigger',
 		},
 		inputs: [],
 		outputs: [NodeConnectionType.Main],
@@ -32,7 +33,9 @@ export class HomeAssistantWsTriggerGeneric  implements INodeType {
 
 	}
 
-
+	methods = {
+			credentialTest
+	}
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 
@@ -65,7 +68,7 @@ export class HomeAssistantWsTriggerGeneric  implements INodeType {
 				jsonBodyParameter
 			);
 
-			emitter =assistant.subscribe_generic(type as string, queryParams)
+			emitter = await assistant.subscribe_generic(type as string, queryParams)
 
 			emitter?.on('error', (error: any) => {
 				stopConsumer();

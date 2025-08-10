@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-base.HomeAssistantWsTrigger",
+	"node": "n8n-nodes-base.HomeAssistantWsGenericTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [

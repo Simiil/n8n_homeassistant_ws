@@ -4,7 +4,6 @@ import {
 } from 'n8n-workflow';
 
 
-
 export class HomeAssistantWsApi implements ICredentialType {
 	name = 'homeAssistantWsApi';
 	displayName = 'HomeAssistant WS API';

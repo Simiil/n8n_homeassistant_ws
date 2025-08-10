@@ -2,6 +2,7 @@ import { INodeType, INodeTypeDescription, ITriggerFunctions, ITriggerResponse, N
 import { HomeAssistant } from "./HomeAssistant";
 import { EventEmitter } from "ws";
 import { load_device_options, load_entity_options, load_trigger_options } from "./loadOptions";
+import { credentialTest }  from './cred';
 
 export class HomeAssistantWsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -105,7 +106,8 @@ export class HomeAssistantWsTrigger implements INodeType {
 			load_entity_options,
 			load_device_options,
 			load_trigger_options,
-		}
+		},
+		credentialTest
 	}
 
 
@@ -125,7 +127,7 @@ export class HomeAssistantWsTrigger implements INodeType {
 			switch (resource) {
 				case 'state': {
 					const entityId = this.getNodeParameter('entityId', null, {});
-					const emitter = assistant.subscribe_events('state_changed')
+					const emitter = await assistant.subscribe_events('state_changed')
 					emitter?.on('event', async (event: any) => {
 						const data = event.data;
 						if (!entityId || data.entity_id == entityId) {

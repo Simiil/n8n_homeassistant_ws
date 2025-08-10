@@ -14,6 +14,7 @@ import { SocketConnection } from "./SocketConnection";
 import {
 	LoggerProxy as Logger
 } from 'n8n-workflow';
+import { ServiceAction } from "./model/ServiceAction";
 
 export class CommandCounter {
 	private cmd = 1;
@@ -220,7 +221,7 @@ export class HomeAssistant {
 		}, { device_id: deviceId })
 	}
 
-	subscribe_trigger_mapped(device_id: string, triggers: Trigger[]): EventEmitter {
+	subscribe_trigger_mapped(device_id: string, triggers: Trigger[]): Promise<EventEmitter> {
 		return this.subscribe_generic('subscribe_trigger', { trigger: triggers })
 	}
 
@@ -232,7 +233,7 @@ export class HomeAssistant {
 	}
 
 
-	subscribe_generic(type: string, params: any): EventEmitter {
+	subscribe_generic(type: string, params: any): Promise<EventEmitter> {
 		const emitter = new EventEmitter();
 		const id = this.cmd.get();
 		this.callbacks.set(id, (type: MessageType, data: any) => {
@@ -252,11 +253,12 @@ export class HomeAssistant {
 			}
 		});
 
-		this.send(id, type, params)
-		return emitter
+		return this.send(id, type, params).then(() => {
+			return emitter
+		})
 	}
 
-	subscribe_events(type: string): EventEmitter {
+	subscribe_events(type: string): Promise<EventEmitter> {
 		return this.subscribe_generic("subscribe_events", { event_type: type })
 	}
 
@@ -273,7 +275,14 @@ export class HomeAssistant {
 			})
 	}
 
-	get_service_actions(domain?: string): Promise<any[]> {
+	get_service_action(domain: string, service: string): Promise<ServiceAction|undefined> {
+		return this.get_service_actions(domain).then(calls => {
+			const call = calls.find(c => c.id == service);
+			return Promise.resolve(call);
+		});
+	}
+
+	get_service_actions(domain?: string): Promise<ServiceAction[]> {
 		const id = this.cmd.get();
 		const services = this.send_with_single_response(id, "get_services", (services: any) => {
 			const options: any[] = [];
@@ -315,6 +324,9 @@ export class HomeAssistant {
 				}));
 			} else if (data['type'] == 'auth_ok') {
 				socket.ready();
+			} else if (data['type'] == 'auth_invalid') {
+				console.error('WebSocket error', data);
+				socket.error(data.message)
 			} else {
 				const id = data['id']
 				const type = data['type']
@@ -365,9 +377,9 @@ export class HomeAssistant {
 			});
 		});
 
-		this.send(id, type, params)
-
-		return promise
+		return this.send(id, type, params).then(() => {
+			return promise
+		})
 	}
 
   send_no_response(type: string, params?: any): Promise<void> {
@@ -384,7 +396,7 @@ export class HomeAssistant {
 		Logger.info(`send ${id} ${type} ${jsonString}`);
 		return this.ws.then(ws => {
 			ws.send(jsonString)
-		});
+		})
 	}
 
 	on(event: string, listener: (this: WebSocket, ...args: any[]) => void): Promise<WebSocket> {

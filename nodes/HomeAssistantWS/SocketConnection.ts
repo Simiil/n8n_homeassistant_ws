@@ -1,3 +1,5 @@
+
+
 type Observer<T> = (value: T) => void;
 
 export class SocketConnection<T>{
@@ -10,9 +12,11 @@ export class SocketConnection<T>{
 
 	private isReady: boolean = false;
 	private isClosed: boolean = false;
+	private isError: string | null = null;
 
 	private observers: Observer<T>[] = [];
 	private rejectors: ((error: any) => void)[] = [];
+
 
 
 	constructor(private obj: T) {
@@ -26,6 +30,8 @@ export class SocketConnection<T>{
 			return Promise.resolve(this.obj)
 		} else if (this.isClosed) {
 			return Promise.reject(new Error('SocketConnection is closed'));
+		} else if (this.isError) {
+			return Promise.reject(new Error(this.isError));
 		} else {
 
 			return new Promise((resolve, reject) => {
@@ -42,6 +48,13 @@ export class SocketConnection<T>{
 	ready() {
 		this.isReady = true;
 		this.observers.forEach(observer => observer(this.obj));
+		this.observers = [];
+		this.rejectors = [];
+	}
+
+	error(error: string) {
+		this.isError = error
+		this.rejectors.forEach(observer => observer(new Error(error)));
 		this.observers = [];
 		this.rejectors = [];
 	}

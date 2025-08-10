@@ -9,7 +9,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { HomeAssistant } from './HomeAssistant';
-import { mapResults } from './utils';
+import {  mapResults } from './utils';
+import { credentialTest }  from './cred';
+
 import { genericNodeProperties, parseQueryParams } from './operations/GenericProperties';
 
 export type QueryParameter = {
@@ -43,6 +45,10 @@ export class HomeAssistantWsGeneric implements INodeType {
 		properties: [
 			...genericNodeProperties(true)
 		]
+	}
+
+	methods = {
+		credentialTest
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

@@ -30,3 +30,5 @@ export function mapResultToAll(t: IExecuteFunctions, items: IDataObject[], resul
 
 	return mappedResults;
 }
+
+
