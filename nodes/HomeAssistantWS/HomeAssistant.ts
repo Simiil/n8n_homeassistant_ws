@@ -287,7 +287,7 @@ export class HomeAssistant {
 		const services = this.send_with_single_response(id, "get_services", (services: any) => {
 			const options: any[] = [];
 			for (let k in services) {
-				if (!domain || k == domain) {
+				if (!domain || domain.trim() === '' || k == domain) {
 
 					for (let s in services[k]) {
 						const serviceDef = services[k][s]

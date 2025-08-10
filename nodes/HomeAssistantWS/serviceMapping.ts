@@ -120,11 +120,13 @@ function createMappedField(service: ServiceAction, f: string, fieldDesc: any): a
 
 	}
 
+
+
 	return {
 		id: f,
 		displayName: fieldDesc.name ?? f,
 		defaultMatch: true,
-		required: false,
+		required: fieldDesc.required ?? false,
 		display: true,
 		...fieldType
 	};

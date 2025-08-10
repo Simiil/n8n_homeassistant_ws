@@ -166,11 +166,14 @@ export async function executeServiceActionOperation(t: IExecuteFunctions, assist
 
 	switch (operation) {
 		case 'list': {
-			const data = await assistant.get_service_actions()
-
 			for (let i = 0; i < items.length; i++) {
-				results.push(data as any[]);
+				const serviceDomain = t.getNodeParameter("serviceDomainId", i, '', {extractValue: true}) as string;
+				const data = await assistant.get_service_actions(serviceDomain)
+				for (let i = 0; i < items.length; i++) {
+					results.push(data as any[]);
+				}
 			}
+
 			break;
 		}
 		case 'execute': {

@@ -16,8 +16,9 @@ import { entityFields, entityOperations, executeEntityOperation } from './operat
 import { executeStateOperation, stateFields, stateOperations } from './operations/StateOperations';
 import { executeServiceActionOperation, serviceActionFields, serviceActionOperations } from './operations/ServiceAction';
 import { executeLogbookOperation, logbookFields, logbookOperations } from './operations/LogbookOperations';
-import { credentialTest }  from './cred';
+import { credentialTest } from './cred';
 import { getMappingColumns } from './serviceMapping';
+import { configFields, configOperations, executeConfigOperations } from './operations/ConfigOperation';
 
 
 
@@ -59,6 +60,10 @@ export class HomeAssistantWs implements INodeType {
 						value: 'category',
 					},
 					{
+						name: 'Config',
+						value: 'config',
+					},
+					{
 						name: 'Device',
 						value: 'device',
 					},
@@ -90,6 +95,9 @@ export class HomeAssistantWs implements INodeType {
 
 			...categoryOperations,
 			...categoryFields,
+
+			...configOperations,
+			...configFields,
 
 			...deviceOperations,
 			...deviceFields,
@@ -159,6 +167,9 @@ export class HomeAssistantWs implements INodeType {
 				break;
 			case 'category':
 				resultData = await executeCategoryOperations(this, assistant, items);
+				break;
+			case 'config':
+				resultData = await executeConfigOperations(this, assistant, items);
 				break;
 			case 'state':
 				resultData = await executeStateOperation(this, assistant, items);
