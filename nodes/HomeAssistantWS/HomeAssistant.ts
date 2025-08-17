@@ -56,7 +56,7 @@ export class HomeAssistant extends EventEmitter {
 	// Ping-pong mechanism for connection health
 	private pingIntervalId: NodeJS.Timeout | null = null;
 	private pongTimeoutId: NodeJS.Timeout | null = null;
-	private pingInterval = 60000; // 30 seconds
+	private pingInterval = 30000; // 30 seconds
 	private pongTimeout = 10000; // 10 seconds to wait for pong
 	private lastPongReceived = Date.now();
 
@@ -341,8 +341,7 @@ export class HomeAssistant extends EventEmitter {
 				// Reset reconnection attempts on successful connection
 				this.reconnectAttempts = 0;
 				this.isReconnecting = false;
-				// Reset command counter for new connection
-				this.cmd.reset();
+
 				socket.ready();
 				this.emit('connected');
 				// Start ping-pong mechanism
@@ -472,7 +471,8 @@ export class HomeAssistant extends EventEmitter {
 
 				// Close the old connection cleanly
 				this.ws.close();
-
+				// Reset command counter for new connection
+				this.cmd.reset();
 				// Create a new connection
 				this.ws = this.get_authenticated_ws();
 				this.logger.info(`Reconnection attempt ${this.reconnectAttempts} initiated`);
