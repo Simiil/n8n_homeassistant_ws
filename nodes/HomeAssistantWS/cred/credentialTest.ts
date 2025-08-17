@@ -5,7 +5,6 @@ export async function homeAssistantWsApiTest(
 	this: ICredentialTestFunctions,
 	credential: ICredentialsDecrypted,
 ): Promise<INodeCredentialTestResult> {
-	console.log('test credential')
 	if (!credential.data?.host) {
 		return Promise.resolve({
 			status: 'Error',
@@ -19,7 +18,7 @@ export async function homeAssistantWsApiTest(
 			message: 'API key is required',
 		})
 	}
-	const assistant = new HomeAssistant(credential.data.host, credential.data.apiKey)
+	const assistant = new HomeAssistant(credential.data.host, credential.data.apiKey, this.logger)
 	await assistant.get_states()
 	return Promise.resolve({
 		status: 'OK',

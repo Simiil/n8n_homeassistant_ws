@@ -1,4 +1,4 @@
-import { CredentialInformation } from "n8n-workflow";
+import { CredentialInformation, Logger } from "n8n-workflow";
 import { EventEmitter, WebSocket } from 'ws';
 
 
@@ -11,15 +11,15 @@ import { Trigger } from "./model/Trigger";
 import { SocketConnection } from "./SocketConnection";
 
 
-import {
-	LoggerProxy as Logger
-} from 'n8n-workflow';
 import { ServiceAction } from "./model/ServiceAction";
 
 export class CommandCounter {
 	private cmd = 1;
 	get(): number {
 		return this.cmd++;
+	}
+	reset(): void {
+		this.cmd = 1;
 	}
 }
 
@@ -30,9 +30,11 @@ enum MessageType {
 	AUTH_REQUIRED = 'auth_required',
 	AUTH_OK = 'auth_ok',
 	ERROR = 'error',
+	PING = 'ping',
+	PONG = 'pong',
 }
 
-export class HomeAssistant {
+export class HomeAssistant extends EventEmitter {
 
 	oneShot<T>(callback: (a: HomeAssistant) => Promise<T>): Promise<T> {
 		const result = callback(this)
@@ -45,10 +47,23 @@ export class HomeAssistant {
 
 	private cmd = new CommandCounter();
 	private ws: SocketConnection<WebSocket>;
+	private reconnectAttempts = 0;
+	private maxReconnectAttempts = 10;
+	private reconnectTimeoutId: NodeJS.Timeout | null = null;
+	private isReconnecting = false;
+	private shouldReconnect = true;
+
+	// Ping-pong mechanism for connection health
+	private pingIntervalId: NodeJS.Timeout | null = null;
+	private pongTimeoutId: NodeJS.Timeout | null = null;
+	private pingInterval = 60000; // 30 seconds
+	private pongTimeout = 10000; // 10 seconds to wait for pong
+	private lastPongReceived = Date.now();
 
 	private callbacks: Map<number, (type: MessageType, data: any) => void> = new Map();
 
-	constructor(private host: CredentialInformation, private apiKey: CredentialInformation) {
+	constructor(private host: CredentialInformation, private apiKey: CredentialInformation, private logger: Logger) {
+		super();
 		this.ws = this.get_authenticated_ws();
 	}
 
@@ -323,10 +338,21 @@ export class HomeAssistant {
 					access_token: this.apiKey,
 				}));
 			} else if (data['type'] == 'auth_ok') {
+				// Reset reconnection attempts on successful connection
+				this.reconnectAttempts = 0;
+				this.isReconnecting = false;
+				// Reset command counter for new connection
+				this.cmd.reset();
 				socket.ready();
+				this.emit('connected');
+				// Start ping-pong mechanism
+				this.startPingPong();
 			} else if (data['type'] == 'auth_invalid') {
-				console.error('WebSocket error', data);
+				this.logger.error('WebSocket error', data);
 				socket.error(data.message)
+			} else if (data['type'] == 'pong') {
+				// Handle pong response
+				this.handlePongReceived(data);
 			} else {
 				const id = data['id']
 				const type = data['type']
@@ -339,7 +365,19 @@ export class HomeAssistant {
 		});
 
 		ws.on('error', (error: any) => {
-			console.error('WebSocket error', error);
+			this.logger.error('WebSocket error', error);
+			this.emit('error', error);
+		});
+
+		ws.on('close', (code: number, reason: Buffer) => {
+			this.logger.info(`WebSocket closed with code ${code}, reason: ${reason.toString()}`);
+			this.stopPingPong(); // Stop ping-pong when connection is lost
+			this.emit('close', code, reason.toString());
+
+			// Only attempt to reconnect if it's an unexpected close and we should reconnect
+			if (this.shouldReconnect && code !== 1000 && !this.isReconnecting) {
+				this.attemptReconnect();
+			}
 		});
 
 		return socket;
@@ -393,21 +431,156 @@ export class HomeAssistant {
 			id: id,
 			...params
 		})
-		Logger.info(`send ${id} ${type} ${jsonString}`);
+		this.logger.info(`send ${id} ${type} ${jsonString}`);
 		return this.ws.then(ws => {
 			ws.send(jsonString)
 		})
 	}
 
-	on(event: string, listener: (this: WebSocket, ...args: any[]) => void): Promise<WebSocket> {
+	onWebSocket(event: string, listener: (this: WebSocket, ...args: any[]) => void): Promise<WebSocket> {
 		return this.ws.then(ws => ws.on(event, listener))
 	}
 
-	removeAllListeners(): Promise<WebSocket> {
+	removeAllWebSocketListeners(): Promise<WebSocket> {
 		return this.ws.then(ws => ws.removeAllListeners())
 	}
 
+	private attemptReconnect(): void {
+		if (this.isReconnecting || !this.shouldReconnect) {
+			return;
+		}
+
+		this.isReconnecting = true;
+		this.reconnectAttempts++;
+
+		if (this.reconnectAttempts > this.maxReconnectAttempts) {
+			this.logger.error(`Max reconnection attempts (${this.maxReconnectAttempts}) reached. Giving up.`);
+			this.emit('reconnect_failed');
+			return;
+		}
+
+		// Exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s, 60s, 60s, 60s, 60s
+		const delay = Math.min(Math.pow(2, this.reconnectAttempts - 1) * 1000, 60000);
+
+		this.logger.info(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+		this.emit('reconnecting', this.reconnectAttempts, delay);
+
+		this.reconnectTimeoutId = setTimeout(() => {
+			try {
+				// Stop ping-pong before reconnecting
+				this.stopPingPong();
+
+				// Close the old connection cleanly
+				this.ws.close();
+
+				// Create a new connection
+				this.ws = this.get_authenticated_ws();
+				this.logger.info(`Reconnection attempt ${this.reconnectAttempts} initiated`);
+			} catch (error) {
+				this.logger.error('Error during reconnection attempt:', error);
+				this.isReconnecting = false;
+				// Try again
+				this.attemptReconnect();
+			}
+		}, delay);
+	}
+
+	public stopReconnecting(): void {
+		this.shouldReconnect = false;
+		if (this.reconnectTimeoutId) {
+			clearTimeout(this.reconnectTimeoutId);
+			this.reconnectTimeoutId = null;
+		}
+		this.isReconnecting = false;
+	}
+
+	private startPingPong(): void {
+		// Clear any existing ping interval
+		this.stopPingPong();
+
+		this.lastPongReceived = Date.now();
+		this.logger.info('Starting ping-pong mechanism');
+
+		this.pingIntervalId = setInterval(() => {
+			this.sendPing();
+		}, this.pingInterval);
+	}
+
+	private stopPingPong(): void {
+		if (this.pingIntervalId) {
+			clearInterval(this.pingIntervalId);
+			this.pingIntervalId = null;
+		}
+		if (this.pongTimeoutId) {
+			clearTimeout(this.pongTimeoutId);
+			this.pongTimeoutId = null;
+		}
+	}
+
+		private sendPing(): void {
+		const pingId = this.cmd.get();
+		const pingMessage = {
+			type: 'ping',
+			id: pingId
+		};
+
+		this.logger.debug(`Sending ping ${pingId}`);
+
+		this.ws.then(ws => {
+			ws.send(JSON.stringify(pingMessage));
+		}).catch(error => {
+			this.logger.error('Failed to send ping:', error);
+		});
+
+		// Set timeout to wait for pong
+		this.pongTimeoutId = setTimeout(() => {
+			this.logger.warn(`Pong timeout for ping ${pingId}`);
+			this.handlePongTimeout();
+		}, this.pongTimeout);
+	}
+
+	private handlePongReceived(data: any): void {
+		const pongId = data.id;
+		this.lastPongReceived = Date.now();
+
+		this.logger.debug(`Received pong ${pongId}`);
+
+		// Clear the pong timeout since we received a response
+		if (this.pongTimeoutId) {
+			clearTimeout(this.pongTimeoutId);
+			this.pongTimeoutId = null;
+		}
+	}
+
+	private handlePongTimeout(): void {
+		this.logger.error('Ping-pong timeout - connection may be dead');
+		this.stopPingPong();
+
+		// Emit an event to notify listeners about connection health issues
+		this.emit('ping_timeout');
+
+		// Optionally trigger a reconnection if the connection seems dead
+		if (this.shouldReconnect && !this.isReconnecting) {
+			this.logger.info('Triggering reconnection due to ping timeout');
+			this.attemptReconnect();
+		}
+	}
+
+	public getConnectionHealth(): { lastPongReceived: number, timeSinceLastPong: number, isHealthy: boolean } {
+		const now = Date.now();
+		const timeSinceLastPong = now - this.lastPongReceived;
+		const maxHealthyInterval = this.pingInterval + this.pongTimeout;
+
+		return {
+			lastPongReceived: this.lastPongReceived,
+			timeSinceLastPong,
+			isHealthy: timeSinceLastPong < maxHealthyInterval
+		};
+	}
+
 	close(): Promise<void> {
+		this.stopReconnecting();
+		this.stopPingPong();
 		return this.ws.then(ws => {
 			this.ws.close();
 			ws.close();

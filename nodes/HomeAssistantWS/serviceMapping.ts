@@ -22,7 +22,7 @@ export async function getMappingColumns(
 	} else {
 		const cred = await this.getCredentials('homeAssistantWsApi');
 
-		const assistant = new HomeAssistant(cred.host, cred.apiKey)
+		const assistant = new HomeAssistant(cred.host, cred.apiKey, this.logger)
 
 		const service = await assistant.get_service_action(serviceDomainId, serviceId);
 

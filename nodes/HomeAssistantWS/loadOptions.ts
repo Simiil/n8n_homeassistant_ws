@@ -32,7 +32,7 @@ export async function load_component_options(
 ): Promise<INodePropertyOptions[]> {
 
 	const cred = await this.getCredentials('homeAssistantWsApi');
-	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
+	return new HomeAssistant(cred.host, cred.apiKey, this.logger).oneShot(async assistant => {
 		const components = await assistant.get_components()
 		return components.map(component => ({ name: component, value: component }))
 	})
@@ -51,7 +51,7 @@ export async function load_service_options(
 ): Promise<INodePropertyOptions[]> {
 
 	const cred = await this.getCredentials('homeAssistantWsApi');
-	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
+	return new HomeAssistant(cred.host, cred.apiKey, this.logger).oneShot(async assistant => {
 		const domain = this.getNodeParameter('serviceDomainId', "", {extractValue: true}) as string
 		const services = await assistant.get_service_actions(domain)
 
@@ -72,7 +72,7 @@ export async function load_service_domain_options(
 ): Promise<INodePropertyOptions[]> {
 
 	const cred = await this.getCredentials('homeAssistantWsApi');
-	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
+	return new HomeAssistant(cred.host, cred.apiKey, this.logger).oneShot(async assistant => {
 		const services = await assistant.get_service_domains()
 
 		return services.map(service => ({ name: service, value: service }))
@@ -92,7 +92,7 @@ export async function load_entity_options(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const cred = await this.getCredentials('homeAssistantWsApi');
-	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
+	return new HomeAssistant(cred.host, cred.apiKey, this.logger).oneShot(async assistant => {
 		const components = await assistant.get_all_entities()
 		const devices = await assistant.get_all_devices()
 
@@ -130,7 +130,7 @@ export async function load_device_options(
 ): Promise<INodePropertyOptions[]> {
 
 	const cred = await this.getCredentials('homeAssistantWsApi');
-	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
+	return new HomeAssistant(cred.host, cred.apiKey, this.logger).oneShot(async assistant => {
 		const components = await assistant.get_all_devices()
 
 		return components.map(component => {
@@ -158,7 +158,7 @@ export async function load_trigger_options(
 	}
 
 	const cred = await this.getCredentials('homeAssistantWsApi');
-	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
+	return new HomeAssistant(cred.host, cred.apiKey, this.logger).oneShot(async assistant => {
 		const triggers = await assistant.get_triggers_for_device(deviceId as string)
 		return triggers.map(trigger => {
 
@@ -181,7 +181,7 @@ export async function load_area_options(
 ): Promise<INodePropertyOptions[]> {
 
 	const cred = await this.getCredentials('homeAssistantWsApi');
-	return new HomeAssistant(cred.host, cred.apiKey).oneShot(async assistant => {
+	return new HomeAssistant(cred.host, cred.apiKey, this.logger).oneShot(async assistant => {
 		const components = await assistant.get_areas()
 		return components.map(area => ({ name: area.name, value: area.area_id }))
 	})

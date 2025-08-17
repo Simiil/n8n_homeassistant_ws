@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-homeassistantws",
-  "version": "0.1.3",
+  "version": "1.0.4",
   "description": "Connect to Home Assistant through WebSockets",
   "keywords": [
     "n8n-community-node-package"

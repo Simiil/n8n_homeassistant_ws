@@ -117,17 +117,13 @@ export class HomeAssistantWsTrigger implements INodeType {
 		let emitter: EventEmitter | undefined;
 		let running = false;
 
-		const startConsumer = async () => {
-			running = true;
-			const cred = await this.getCredentials('homeAssistantWsApi');
-			assistant = new HomeAssistant(cred.host, cred.apiKey)
-
+		const subscribeToEvents = async () => {
 			const resource = this.getNodeParameter('resource', null, {});
 
 			switch (resource) {
 				case 'state': {
 					const entityId = this.getNodeParameter('entityId', null, {});
-					const emitter = await assistant.subscribe_events('state_changed')
+					emitter = await assistant!.subscribe_events('state_changed')
 					emitter?.on('event', async (event: any) => {
 						const data = event.data;
 						if (!entityId || data.entity_id == entityId) {
@@ -146,7 +142,7 @@ export class HomeAssistantWsTrigger implements INodeType {
 				case 'trigger': {
 						const triggerId = this.getNodeParameter('triggerId', null, {});
 						const deviceId = this.getNodeParameter('deviceId', null, {});
-						const emitter = await assistant.subscribe_trigger(deviceId as string, triggerId as string[])
+						emitter = await assistant!.subscribe_trigger(deviceId as string, triggerId as string[])
 						emitter?.on('event', (event: any) => {
 							this.emit([
 								this.helpers.returnJsonArray([event])
@@ -159,6 +155,25 @@ export class HomeAssistantWsTrigger implements INodeType {
 					break;
 
 			}
+		};
+
+		const resubscribeAfterReconnect = async () => {
+			try {
+				// Clear old emitter listeners to avoid duplicates
+				emitter?.removeAllListeners();
+				await subscribeToEvents();
+			} catch (error) {
+				this.logger.error('Error resubscribing after reconnect:', error);
+				this.emitError(new NodeApiError(this.getNode(), error));
+			}
+		};
+
+		const startConsumer = async () => {
+			running = true;
+			const cred = await this.getCredentials('homeAssistantWsApi');
+			assistant = new HomeAssistant(cred.host, cred.apiKey, this.logger)
+
+			await subscribeToEvents();
 
 			emitter?.on('error', (error: any) => {
 				stopConsumer();
@@ -168,17 +183,31 @@ export class HomeAssistantWsTrigger implements INodeType {
 				}));
 			})
 
-			assistant.on('close', () => {
+			assistant.on('close', (code: number, reason: string) => {
+				this.logger.info(`HomeAssistant connection closed: ${code} - ${reason}`);
+			});
+
+			assistant.on('reconnecting', (attempt: number, delay: number) => {
+				this.logger.info(`HomeAssistant reconnecting... attempt ${attempt}, delay ${delay}ms`);
+			});
+
+			assistant.on('connected', () => {
+				this.logger.info('HomeAssistant reconnected successfully');
+				// Re-subscribe to events after reconnection
+				resubscribeAfterReconnect();
+			});
+
+			assistant.on('reconnect_failed', () => {
 				stopConsumer();
-				this.emitError(new NodeOperationError(this.getNode(), 'Connection closed unexpectedly'));
-			})
+				this.emitError(new NodeOperationError(this.getNode(), 'Connection could not be re-established after multiple attempts'));
+			});
 
 			return Promise.resolve(true);
 		}
 
 		async function stopConsumer() {
 			// remove all listeners so we dont trigger the unexpected closed error
-			await assistant?.removeAllListeners();
+			await assistant?.removeAllWebSocketListeners();
 			await assistant?.close();
 			emitter?.removeAllListeners();
 			running = false;

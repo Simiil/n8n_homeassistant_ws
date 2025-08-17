@@ -1,4 +1,4 @@
-import { INodeType, INodeTypeDescription, ITriggerFunctions, ITriggerResponse, NodeConnectionType, NodeOperationError } from "n8n-workflow";
+import { INodeType, INodeTypeDescription, ITriggerFunctions, ITriggerResponse, NodeApiError, NodeConnectionType, NodeOperationError } from "n8n-workflow";
 import { HomeAssistant } from "./HomeAssistant";
 import { EventEmitter } from "ws";
 import { genericNodeProperties, parseQueryParams } from "./operations/GenericProperties";
@@ -43,11 +43,7 @@ export class HomeAssistantWsGenericTrigger  implements INodeType {
 		let emitter: EventEmitter | undefined;
 		let running = false;
 
-		const startConsumer = async () => {
-			running = true;
-			const cred = await this.getCredentials('homeAssistantWsApi');
-			assistant = new HomeAssistant(cred.host, cred.apiKey)
-
+		const subscribeToEvents = async () => {
 			const type = this.getNodeParameter('type', null, {});
 			if(!type){
 				throw new NodeOperationError(this.getNode(), 'Type is required')
@@ -68,7 +64,7 @@ export class HomeAssistantWsGenericTrigger  implements INodeType {
 				jsonBodyParameter
 			);
 
-			emitter = await assistant.subscribe_generic(type as string, queryParams)
+			emitter = await assistant!.subscribe_generic(type as string, queryParams)
 
 			emitter?.on('error', (error: any) => {
 				stopConsumer();
@@ -83,18 +79,51 @@ export class HomeAssistantWsGenericTrigger  implements INodeType {
 					this.helpers.returnJsonArray([event])
 				]);
 			})
+		};
 
-			assistant.on('close', () => {
+		const resubscribeAfterReconnect = async () => {
+			try {
+				// Clear old emitter listeners to avoid duplicates
+				emitter?.removeAllListeners();
+				await subscribeToEvents();
+			} catch (error) {
+				this.logger.error('Error resubscribing after reconnect:', error);
+				this.emitError(new NodeApiError(this.getNode(), error));
+			}
+		};
+
+		const startConsumer = async () => {
+			running = true;
+			const cred = await this.getCredentials('homeAssistantWsApi');
+			assistant = new HomeAssistant(cred.host, cred.apiKey, this.logger)
+
+			await subscribeToEvents();
+
+			assistant.on('close', (code: number, reason: string) => {
+				this.logger.info(`HomeAssistant connection closed: ${code} - ${reason}`);
+			});
+
+			assistant.on('reconnecting', (attempt: number, delay: number) => {
+				this.logger.info(`HomeAssistant reconnecting... attempt ${attempt}, delay ${delay}ms`);
+			});
+
+			assistant.on('connected', () => {
+				this.logger.info('HomeAssistant reconnected successfully');
+				// Re-subscribe to events after reconnection
+				resubscribeAfterReconnect();
+			});
+
+			assistant.on('reconnect_failed', () => {
 				stopConsumer();
-				this.emitError(new NodeOperationError(this.getNode(), 'Connection closed unexpectedly'));
-			})
+				this.emitError(new NodeOperationError(this.getNode(), 'Connection could not be re-established after multiple attempts'));
+			});
 
 			return Promise.resolve(true);
 		}
 
 		async function stopConsumer() {
 			// remove all listeners so we dont trigger the unexpected closed error
-			await assistant?.removeAllListeners();
+			await assistant?.removeAllWebSocketListeners();
 			await assistant?.close();
 			emitter?.removeAllListeners();
 			running = false;
